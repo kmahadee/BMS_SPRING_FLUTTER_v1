@@ -7,21 +7,9 @@ import 'package:vantedge/features/branches/presentation/widgets/account_status_b
 import 'package:vantedge/features/branches/presentation/widgets/balance_widget.dart';
 import '../../../data/models/account_response_dto.dart';
 import '../../providers/account_provider.dart';
-// import '../widgets/balance_widget.dart';
-// import '../widgets/account_status_badge.dart';
-// import '../widgets/account_shimmer_loader.dart';
 import 'account_statement_screen.dart';
 
-/// Detailed view of a single account with full information
-/// 
-/// Features:
-/// - Hero animation from list
-/// - Full account information
-/// - Copy functionality for account number and IFSC
-/// - Branch details
-/// - Nominee information
-/// - Action buttons (Statement, Transfer, Freeze)
-/// - Auto-refresh balance
+
 class AccountDetailsScreen extends StatefulWidget {
   final String accountNumber;
 
