@@ -1,3 +1,5 @@
+// lib/shared/widgets/app_drawer.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vantedge/core/navigation/route_guard.dart';
@@ -52,17 +54,18 @@ class _AppDrawerState extends State<AppDrawer> {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       setState(() {
-        _appVersion = 'v${packageInfo.version} (${packageInfo.buildNumber})';
+        _appVersion =
+            'v${packageInfo.version} (${packageInfo.buildNumber})';
       });
     } catch (e) {
-      setState(() {
-        _appVersion = 'v1.0.0';
-      });
+      setState(() => _appVersion = 'v1.0.0');
     }
   }
 
-  List<MenuSection> _getMenuSections(UserRole role, BadgeCountProvider counts) {
+  List<MenuSection> _getMenuSections(
+      UserRole role, BadgeCountProvider counts) {
     switch (role) {
+      // ── Customer ──────────────────────────────────────────────────────────
       case UserRole.customer:
         return [
           MenuSection(
@@ -97,12 +100,18 @@ class _AppDrawerState extends State<AppDrawer> {
           MenuSection(
             title: 'Products',
             items: [
+              // ── My Loans entry for customers ──────────────────────────
               MenuItem(
-                title: 'Loans',
-                icon: Icons.account_balance,
+                title: 'My Loans',
+                icon: Icons.account_balance_rounded,
                 route: AppRoutes.loans,
               ),
-              MenuItem(title: 'DPS', icon: Icons.savings, route: AppRoutes.dps),
+              // ─────────────────────────────────────────────────────────
+              MenuItem(
+                title: 'DPS',
+                icon: Icons.savings,
+                route: AppRoutes.dps,
+              ),
               MenuItem(
                 title: 'Cards',
                 icon: Icons.credit_card,
@@ -142,6 +151,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
         ];
 
+      // ── Branch Manager ────────────────────────────────────────────────────
       case UserRole.branchManager:
         return [
           MenuSection(
@@ -172,13 +182,31 @@ class _AppDrawerState extends State<AppDrawer> {
                 route: AppRoutes.customerManagement,
               ),
               MenuItem(
-                title: 'Approvals',
+                title: 'Loan Approvals',
                 icon: Icons.check_circle,
-                route: AppRoutes.loanApproval,
+                route: AppRoutes.officerLoanQueue,
                 badgeCount: counts.pendingLoanApprovals,
               ),
             ],
           ),
+          // ── Loan Management section (also visible to branch managers) ───
+          MenuSection(
+            title: 'Loan Management',
+            items: [
+              MenuItem(
+                title: 'Approval Queue',
+                icon: Icons.pending_actions_rounded,
+                route: AppRoutes.officerLoanQueue,
+                badgeCount: counts.pendingLoanApprovals,
+              ),
+              MenuItem(
+                title: 'Search Loans',
+                icon: Icons.manage_search_rounded,
+                route: AppRoutes.officerLoanSearch,
+              ),
+            ],
+          ),
+          // ──────────────────────────────────────────────────────────────
           MenuSection(
             title: 'Staff',
             items: [
@@ -216,6 +244,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
         ];
 
+      // ── Loan Officer ───────────────────────────────────────────────────────
       case UserRole.loanOfficer:
         return [
           MenuSection(
@@ -227,28 +256,29 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ],
           ),
+          // ── Loan Management section ──────────────────────────────────────
           MenuSection(
             title: 'Loan Management',
             items: [
               MenuItem(
-                title: 'Applications',
-                icon: Icons.assignment,
-                route: AppRoutes.loanApplications,
+                title: 'Approval Queue',
+                icon: Icons.pending_actions_rounded,
+                route: AppRoutes.officerLoanQueue,
                 badgeCount: counts.pendingLoanApplications,
               ),
               MenuItem(
                 title: 'Loan Portfolio',
-                icon: Icons.account_balance,
+                icon: Icons.account_balance_rounded,
                 route: AppRoutes.loans,
               ),
               MenuItem(
-                title: 'Approvals',
-                icon: Icons.check_circle,
-                route: AppRoutes.loanApproval,
-                badgeCount: counts.approvedLoans,
+                title: 'Search Loans',
+                icon: Icons.manage_search_rounded,
+                route: AppRoutes.officerLoanSearch,
               ),
             ],
           ),
+          // ─────────────────────────────────────────────────────────────────
           MenuSection(
             title: 'Customers',
             items: [
@@ -281,6 +311,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
         ];
 
+      // ── Card Officer ──────────────────────────────────────────────────────
       case UserRole.cardOfficer:
         return [
           MenuSection(
@@ -340,6 +371,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
         ];
 
+      // ── Admin / Super Admin ───────────────────────────────────────────────
       case UserRole.admin:
       case UserRole.superAdmin:
         return [
@@ -372,6 +404,24 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ],
           ),
+          // ── Loan Management section (admins also have access) ─────────────
+          MenuSection(
+            title: 'Loan Management',
+            items: [
+              MenuItem(
+                title: 'Approval Queue',
+                icon: Icons.pending_actions_rounded,
+                route: AppRoutes.officerLoanQueue,
+                badgeCount: counts.pendingLoanApprovals,
+              ),
+              MenuItem(
+                title: 'Search Loans',
+                icon: Icons.manage_search_rounded,
+                route: AppRoutes.officerLoanSearch,
+              ),
+            ],
+          ),
+          // ──────────────────────────────────────────────────────────────────
           MenuSection(
             title: 'Reports & Analytics',
             items: [
@@ -399,12 +449,13 @@ class _AppDrawerState extends State<AppDrawer> {
                 MenuItem(
                   title: 'Audit Logs',
                   icon: Icons.history,
-                  route: '/admin/audit-logs',
+                  route: AppRoutes.auditLogs,
                 ),
             ],
           ),
         ];
 
+      // ── Fallback ──────────────────────────────────────────────────────────
       default:
         return [
           MenuSection(
@@ -433,12 +484,12 @@ class _AppDrawerState extends State<AppDrawer> {
         if (user == null) {
           return Drawer(
             child: Center(
-              child: Text('Not logged in', style: theme.textTheme.bodyLarge),
+              child: Text('Not logged in',
+                  style: theme.textTheme.bodyLarge),
             ),
           );
         }
 
-        // final menuSections = _getMenuSections(user.role);
         final counts = context.watch<BadgeCountProvider>();
         final menuSections = _getMenuSections(user.role, counts);
 
@@ -446,10 +497,7 @@ class _AppDrawerState extends State<AppDrawer> {
           child: SafeArea(
             child: Column(
               children: [
-                // User Profile Header
                 _buildUserHeader(context, user, colorScheme, theme),
-
-                // Menu Items
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -466,11 +514,8 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                 ),
-
-                // Logout Button
-                _buildLogoutButton(context, authProvider, colorScheme, theme),
-
-                // App Version
+                _buildLogoutButton(
+                    context, authProvider, colorScheme, theme),
                 _buildAppVersion(theme, colorScheme),
               ],
             ),
@@ -492,7 +537,10 @@ class _AppDrawerState extends State<AppDrawer> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [colorScheme.primary, colorScheme.primary.withOpacity(0.8)],
+          colors: [
+            colorScheme.primary,
+            colorScheme.primary.withOpacity(0.8)
+          ],
         ),
       ),
       child: Column(
@@ -528,9 +576,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: colorScheme.onPrimary.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -610,25 +656,32 @@ class _AppDrawerState extends State<AppDrawer> {
     return ListTile(
       leading: Icon(
         item.icon,
-        color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+        color: isSelected
+            ? colorScheme.primary
+            : colorScheme.onSurfaceVariant,
       ),
       title: Text(
         item.title,
         style: theme.textTheme.bodyLarge?.copyWith(
           color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontWeight:
+              isSelected ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
       trailing: item.badgeCount != null && item.badgeCount! > 0
           ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: colorScheme.error,
                 borderRadius: BorderRadius.circular(12),
               ),
-              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+              constraints:
+                  const BoxConstraints(minWidth: 24, minHeight: 24),
               child: Text(
-                item.badgeCount! > 99 ? '99+' : '${item.badgeCount}',
+                item.badgeCount! > 99
+                    ? '99+'
+                    : '${item.badgeCount}',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.onError,
                   fontWeight: FontWeight.bold,
@@ -638,11 +691,14 @@ class _AppDrawerState extends State<AppDrawer> {
             )
           : null,
       selected: isSelected,
-      selectedTileColor: colorScheme.primaryContainer.withOpacity(0.3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      selectedTileColor:
+          colorScheme.primaryContainer.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12)),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () {
-        Navigator.pop(context); // Close drawer
+        Navigator.pop(context); // close drawer
         if (!isSelected) {
           Navigator.pushNamed(context, item.route);
         }
@@ -664,7 +720,8 @@ class _AppDrawerState extends State<AppDrawer> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Logout'),
-              content: const Text('Are you sure you want to logout?'),
+              content:
+                  const Text('Are you sure you want to logout?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -690,7 +747,8 @@ class _AppDrawerState extends State<AppDrawer> {
           }
         },
         icon: Icon(Icons.logout, color: colorScheme.error),
-        label: Text('Logout', style: TextStyle(color: colorScheme.error)),
+        label: Text('Logout',
+            style: TextStyle(color: colorScheme.error)),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: colorScheme.error),
           padding: const EdgeInsets.symmetric(vertical: 12),

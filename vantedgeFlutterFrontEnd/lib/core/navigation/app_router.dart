@@ -1,15 +1,26 @@
+// lib/core/navigation/app_router.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vantedge/features/accounts/presentation/presentation/screens/account_details_screen.dart';
+import 'package:vantedge/features/accounts/presentation/presentation/screens/account_list_screen.dart';
 import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/core/navigation/route_guard.dart';
+
+// Auth screens
 import 'package:vantedge/features/auth/presentation/screens/customer_signup_screen.dart';
 import 'package:vantedge/features/auth/presentation/screens/login_screen.dart';
 import 'package:vantedge/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:vantedge/features/auth/presentation/screens/splash_screen.dart';
+import 'package:vantedge/features/branches/presentation/screens/branch_list_screen.dart';
+
+// Home screens
 import 'package:vantedge/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:vantedge/features/home/presentation/screens/customer_home_screen.dart';
+
+// Transaction screens
 import 'package:vantedge/features/transactions/presentation/screens/transaction_home_screen.dart';
 import 'package:vantedge/features/transactions/presentation/screens/deposit_screen.dart';
 import 'package:vantedge/features/transactions/presentation/screens/withdraw_screen.dart';
@@ -18,6 +29,18 @@ import 'package:vantedge/features/transactions/presentation/screens/transaction_
 import 'package:vantedge/features/transactions/presentation/screens/transaction_details_screen.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_history_model.dart';
 
+// ── Loan screens ──────────────────────────────────────────────────────────────
+import 'package:vantedge/features/loans/presentation/screens/loan_list_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_application_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_details_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/repayment_schedule_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_payment_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/officer_loan_queue_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_approval_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_disbursement_screen.dart';
+import 'package:vantedge/features/loans/presentation/screens/loan_search_screen.dart';
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AppRouter {
   AppRouter._();
 
@@ -25,6 +48,7 @@ class AppRouter {
     final args = settings.arguments;
 
     switch (settings.name) {
+      // ── Auth ─────────────────────────────────────────────────────────────
       case AppRoutes.login:
         return _buildRoute(settings, _getLoginScreen());
 
@@ -43,6 +67,7 @@ class AppRouter {
       case AppRoutes.forgotPassword:
         return _buildRoute(settings, _getForgotPasswordScreen());
 
+      // ── Home ─────────────────────────────────────────────────────────────
       case AppRoutes.home:
       case AppRoutes.customerHome:
       case AppRoutes.branchManagerHome:
@@ -57,8 +82,10 @@ class AppRouter {
           requireAuth: true,
         );
 
+      // ── Accounts ─────────────────────────────────────────────────────────
       case AppRoutes.accounts:
-        return _buildRoute(settings, _getAccountsScreen(), requireAuth: true);
+        return _buildRoute(
+            settings, _getAccountsScreen(), requireAuth: true);
 
       case AppRoutes.accountDetails:
         return _buildRoute(
@@ -67,6 +94,7 @@ class AppRouter {
           requireAuth: true,
         );
 
+      // ── Transactions ──────────────────────────────────────────────────────
       case AppRoutes.transactions:
         return _buildRoute(
           settings,
@@ -84,7 +112,8 @@ class AppRouter {
         );
 
       case AppRoutes.transfer:
-        return _buildRoute(settings, const TransferScreen(), requireAuth: true);
+        return _buildRoute(
+            settings, const TransferScreen(), requireAuth: true);
 
       case AppRoutes.deposit:
         final depositAcct = args is String ? args : null;
@@ -110,14 +139,115 @@ class AppRouter {
           requireAuth: true,
         );
 
+      // ── Customer-facing loan routes ────────────────────────────────────────
+
+      /// /loans — list of the logged-in customer's loans.
+      case AppRoutes.loans:
+        return _buildRoute(
+          settings,
+          const LoanListScreen(),
+          requireAuth: true,
+        );
+
+      /// /loans/apply — loan application form.
+      case AppRoutes.loanApplication:
+        return _buildRoute(
+          settings,
+          const LoanApplicationScreen(),
+          requireAuth: true,
+        );
+
+      /// /loans/details — loan detail view; expects loanId (String) as argument.
+      case AppRoutes.loanDetails:
+        final loanId = args is String ? args : null;
+        if (loanId == null) return _buildRoute(settings, _get404Screen());
+        return _buildRoute(
+          settings,
+          LoanDetailsScreen(loanId: loanId),
+          requireAuth: true,
+        );
+
+      /// /loans/schedule — repayment schedule; expects loanId (String) as argument.
+      case AppRoutes.loanRepaymentSchedule:
+        final loanId = args is String ? args : null;
+        if (loanId == null) return _buildRoute(settings, _get404Screen());
+        return _buildRoute(
+          settings,
+          RepaymentScheduleScreen(loanId: loanId),
+          requireAuth: true,
+        );
+
+      /// /loans/pay — make a payment; expects loanId (String) as argument.
+      case AppRoutes.loanPayment:
+        final loanId = args is String ? args : null;
+        if (loanId == null) return _buildRoute(settings, _get404Screen());
+        return _buildRoute(
+          settings,
+          LoanPaymentScreen(loanId: loanId),
+          requireAuth: true,
+        );
+
+      // ── Officer-only loan routes (role-guarded) ────────────────────────────
+
+      /// /officer/loans — pending-approval queue.
+      /// Also handles the legacy /loans/approval path used in drawers/nav bars.
+      case AppRoutes.officerLoanQueue:
+      case AppRoutes.loanApproval:  // legacy alias — still usable from drawer
+        return _buildRoute(
+          settings,
+          const OfficerLoanQueueScreen(),
+          requireAuth: true,
+        );
+
+      /// /officer/loans/approve — review & approve/reject a loan.
+      /// Also handles the legacy /loans/applications path.
+      case AppRoutes.officerLoanApprove:
+      case AppRoutes.loanApplications: // legacy alias
+        final loanId = args is String ? args : null;
+        if (loanId == null) {
+          // No loanId → fall through to the queue
+          return _buildRoute(
+            settings,
+            const OfficerLoanQueueScreen(),
+            requireAuth: true,
+          );
+        }
+        return _buildRoute(
+          settings,
+          LoanApprovalScreen(loanId: loanId),
+          requireAuth: true,
+        );
+
+      /// /officer/loans/disburse — disburse an approved loan.
+      case AppRoutes.officerLoanDisburse:
+        final loanId = args is String ? args : null;
+        if (loanId == null) return _buildRoute(settings, _get404Screen());
+        return _buildRoute(
+          settings,
+          LoanDisbursementScreen(loanId: loanId),
+          requireAuth: true,
+        );
+
+      /// /officer/loans/search — advanced loan search.
+      case AppRoutes.officerLoanSearch:
+        return _buildRoute(
+          settings,
+          const LoanSearchScreen(),
+          requireAuth: true,
+        );
+
+      // ── Misc ──────────────────────────────────────────────────────────────
       case AppRoutes.branchManagement:
-        return _buildRoute(settings, _getBranchListScreen(), requireAuth: true);
+        return _buildRoute(
+            settings, _getBranchListScreen(), requireAuth: true);
 
       case AppRoutes.profile:
-        return _buildRoute(settings, _getProfileScreen(), requireAuth: true);
+        return _buildRoute(
+            settings, _getProfileScreen(), requireAuth: true);
 
       case AppRoutes.settings:
-        return _buildRoute(settings, _getSettingsScreen(), requireAuth: true);
+        return _buildRoute(
+            settings, _getSettingsScreen(), requireAuth: true);
 
       case AppRoutes.notifications:
         return _buildRoute(
@@ -134,6 +264,8 @@ class AppRouter {
     }
   }
 
+  // ── Route builders ────────────────────────────────────────────────────────
+
   static MaterialPageRoute<dynamic> _buildRoute(
     RouteSettings settings,
     Widget screen, {
@@ -145,7 +277,8 @@ class AppRouter {
       fullscreenDialog: fullscreenDialog,
       builder: (context) {
         if (requireAuth) {
-          return _buildAuthenticatedRoute(context, screen, settings.name!);
+          return _buildAuthenticatedRoute(
+              context, screen, settings.name!);
         }
         return screen;
       },
@@ -179,7 +312,8 @@ class AppRouter {
     );
   }
 
-  static Route<T> _buildFadeRoute<T>(RouteSettings settings, Widget screen) {
+  static Route<T> _buildFadeRoute<T>(
+      RouteSettings settings, Widget screen) {
     return PageRouteBuilder<T>(
       settings: settings,
       pageBuilder: (_, __, ___) => screen,
@@ -217,11 +351,14 @@ class AppRouter {
           begin: begin,
           end: Offset.zero,
         ).chain(CurveTween(curve: Curves.easeInOut));
-        return SlideTransition(position: animation.drive(tween), child: child);
+        return SlideTransition(
+            position: animation.drive(tween), child: child);
       },
       transitionDuration: const Duration(milliseconds: 300),
     );
   }
+
+  // ── Screen factories ──────────────────────────────────────────────────────
 
   static Widget _getLoginScreen() => const LoginScreen();
 
@@ -232,29 +369,30 @@ class AppRouter {
   static Widget _getHomeScreen(String route) {
     switch (route) {
       case AppRoutes.customerHome:
-        return const CustomerHomeScreen(); // CustomerHomeScreen()
+        return const CustomerHomeScreen();
       case AppRoutes.branchManagerHome:
-        return const HomeScreen(); // BranchManagerHomeScreen()
+        return const HomeScreen();
       case AppRoutes.loanOfficerHome:
-        return const HomeScreen(); // LoanOfficerHomeScreen()
+        return const HomeScreen();
       case AppRoutes.cardOfficerHome:
-        return const HomeScreen(); // CardOfficerHomeScreen()
+        return const HomeScreen();
       case AppRoutes.adminHome:
-        return const HomeScreen(); // AdminHomeScreen()
+        return const HomeScreen();
       case AppRoutes.superAdminHome:
-        return const HomeScreen(); // SuperAdminHomeScreen()
+        return const HomeScreen();
       case AppRoutes.employeeHome:
-        return const HomeScreen(); // EmployeeHomeScreen()
+        return const HomeScreen();
       default:
-        return const HomeScreen(); // GenericHomeScreen()
+        return const HomeScreen();
     }
   }
 
-  static Widget _getAccountsScreen() => const Placeholder();
+  static Widget _getAccountsScreen() => const AccountListScreen();
 
-  static Widget _getAccountDetailsScreen(dynamic args) => const Placeholder();
+  static Widget _getAccountDetailsScreen(dynamic args) =>
+      const AccountDetailsScreen(accountNumber: '',);
 
-  static Widget _getBranchListScreen() => const Placeholder();
+  static Widget _getBranchListScreen() => const BranchListScreen();
 
   static Widget _getProfileScreen() => const Placeholder();
 
@@ -281,7 +419,8 @@ class AppRouter {
               style: TextStyle(fontSize: 20, color: Colors.grey),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: () {}, child: const Text('Go Back')),
+            ElevatedButton(
+                onPressed: () {}, child: const Text('Go Back')),
           ],
         ),
       ),
@@ -297,23 +436,25 @@ extension NavigationExtension on BuildContext {
     String routeName,
     bool Function(Route<dynamic>) predicate, {
     Object? arguments,
-  }) => Navigator.pushNamedAndRemoveUntil<T>(
-    this,
-    routeName,
-    predicate,
-    arguments: arguments,
-  );
+  }) =>
+      Navigator.pushNamedAndRemoveUntil<T>(
+        this,
+        routeName,
+        predicate,
+        arguments: arguments,
+      );
 
   Future<T?> pushReplacementNamed<T, TO>(
     String routeName, {
     Object? arguments,
     TO? result,
-  }) => Navigator.pushReplacementNamed<T, TO>(
-    this,
-    routeName,
-    arguments: arguments,
-    result: result,
-  );
+  }) =>
+      Navigator.pushReplacementNamed<T, TO>(
+        this,
+        routeName,
+        arguments: arguments,
+        result: result,
+      );
 
   void pop<T>([T? result]) => Navigator.pop<T>(this, result);
 

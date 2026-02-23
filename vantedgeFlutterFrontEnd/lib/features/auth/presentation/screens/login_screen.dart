@@ -36,22 +36,26 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _initTime = DateTime.now();
-    print('🔐 [LoginScreen] initState started at ${_initTime!.toIso8601String()}');
-    
+    print(
+      '🔐 [LoginScreen] initState started at ${_initTime!.toIso8601String()}',
+    );
+
     print('🔐 [LoginScreen] Checking biometric availability');
     _checkBiometricAvailability();
-    
+
     print('🔐 [LoginScreen] Loading remembered credentials');
     _loadRememberedCredentials();
-    
+
     print('🔐 [LoginScreen] initState completed');
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    print('🔐 [LoginScreen] didChangeDependencies called (build #$_buildCount)');
-    
+    print(
+      '🔐 [LoginScreen] didChangeDependencies called (build #$_buildCount)',
+    );
+
     // Check if AuthProvider is available
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -81,18 +85,20 @@ class _LoginScreenState extends State<LoginScreen> {
       print('  - Checking canCheckBiometrics');
       final canCheckBiometrics = await _localAuth.canCheckBiometrics;
       print('  - canCheckBiometrics: $canCheckBiometrics');
-      
+
       print('  - Checking isDeviceSupported');
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       print('  - isDeviceSupported: $isDeviceSupported');
-      
+
       final available = canCheckBiometrics && isDeviceSupported;
       print('  - Biometric available: $available');
-      
+
       setState(() {
         _biometricAvailable = available;
       });
-      print('✅ [LoginScreen] Biometric availability set to $_biometricAvailable');
+      print(
+        '✅ [LoginScreen] Biometric availability set to $_biometricAvailable',
+      );
     } catch (e) {
       print('❌ [LoginScreen] Error checking biometric availability: $e');
       setState(() {
@@ -121,7 +127,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _saveCredentials() async {
-    print('🔐 [LoginScreen] _saveCredentials started (rememberMe: $_rememberMe)');
+    print(
+      '🔐 [LoginScreen] _saveCredentials started (rememberMe: $_rememberMe)',
+    );
     if (_rememberMe) {
       print('  - Saving username: ${_usernameController.text}');
       // TODO: Save username to secure storage
@@ -142,14 +150,14 @@ class _LoginScreenState extends State<LoginScreen> {
     print('  - Username: ${_usernameController.text}');
     print('  - Password length: ${_passwordController.text.length} characters');
     print('  - Form valid: ${_formKey.currentState?.validate()}');
-    
+
     if (!_formKey.currentState!.validate()) {
       print('❌ [LoginScreen] Form validation failed');
       return;
     }
 
     print('✅ [LoginScreen] Form validation passed');
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -213,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _biometricLogin() async {
     print('\n🔐 [LoginScreen] ===== BIOMETRIC LOGIN ATTEMPT =====');
     print('  - Biometric available: $_biometricAvailable');
-    
+
     if (!_biometricAvailable) {
       print('❌ [LoginScreen] Biometric authentication not available');
       _showErrorSnackBar('Biometric authentication is not available.');
@@ -229,8 +237,10 @@ class _LoginScreenState extends State<LoginScreen> {
           biometricOnly: true,
         ),
       );
-      
-      print('  - Authentication result: ${authenticated ? 'SUCCESS' : 'FAILURE'}');
+
+      print(
+        '  - Authentication result: ${authenticated ? 'SUCCESS' : 'FAILURE'}',
+      );
 
       if (!authenticated) {
         print('  - User canceled or authentication failed');
@@ -242,12 +252,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _showErrorSnackBar(
         'Please login with username/password first and enable biometric login.',
       );
-      
+
       // Future implementation:
       // final storage = FlutterSecureStorage();
       // final savedUsername = await storage.read(key: 'biometric_username');
       // final savedPassword = await storage.read(key: 'biometric_password');
-      // 
+      //
       // if (savedUsername != null && savedPassword != null) {
       //   _usernameController.text = savedUsername;
       //   _passwordController.text = savedPassword;
@@ -264,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _navigateToHome(UserEntity user) {
     print('\n🔐 [LoginScreen] ===== NAVIGATING TO HOME =====');
     print('  - User role: ${user.role}');
-    
+
     String route;
     switch (user.role) {
       case UserRole.customer:
@@ -296,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
         print('  - Route: superAdminHome ($route)');
         break;
     }
-    
+
     print('  - Pushing replacement named route');
     Navigator.pushReplacementNamed(context, route, arguments: user);
     print('✅ [LoginScreen] Navigation called');
@@ -321,18 +331,13 @@ class _LoginScreenState extends State<LoginScreen> {
             const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontSize: 14),
-              ),
+              child: Text(message, style: const TextStyle(fontSize: 14)),
             ),
           ],
         ),
         backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         duration: const Duration(seconds: 4),
       ),
     );
@@ -353,7 +358,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String? _validatePassword(String? value) {
-    print('🔐 [LoginScreen] Validating password (length: ${value?.length ?? 0})');
+    print(
+      '🔐 [LoginScreen] Validating password (length: ${value?.length ?? 0})',
+    );
     if (value == null || value.isEmpty) {
       print('  - Validation failed: password is empty');
       return 'Password is required';
@@ -369,10 +376,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     _buildCount++;
-    final elapsed = _initTime != null 
-        ? DateTime.now().difference(_initTime!).inMilliseconds 
+    final elapsed = _initTime != null
+        ? DateTime.now().difference(_initTime!).inMilliseconds
         : 0;
-    
+
     print('\n🔐 [LoginScreen] 🔨 BUILD METHOD CALLED (build #$_buildCount)');
     print('  - Time since init: ${elapsed}ms');
     print('  - Widget mounted: $mounted');
@@ -450,10 +457,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         Text(
           'Login to your account',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
       ],
     );
@@ -495,14 +499,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: Colors.grey[600],
               ),
               onPressed: () {
-                print('🔐 [LoginScreen] Toggle password visibility: ${!_obscurePassword}');
+                print(
+                  '🔐 [LoginScreen] Toggle password visibility: ${!_obscurePassword}',
+                );
                 setState(() {
                   _obscurePassword = !_obscurePassword;
                 });
               },
             ),
             onSubmitted: (_) {
-              print('🔐 [LoginScreen] Password field submitted, triggering login');
+              print(
+                '🔐 [LoginScreen] Password field submitted, triggering login',
+              );
               _login();
             },
           ),
@@ -518,7 +526,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Checkbox(
                       value: _rememberMe,
                       onChanged: (value) {
-                        print('🔐 [LoginScreen] Remember me changed to: $value');
+                        print(
+                          '🔐 [LoginScreen] Remember me changed to: $value',
+                        );
                         setState(() {
                           _rememberMe = value ?? false;
                         });
@@ -529,10 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Remember me',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
                 ],
               ),
@@ -550,11 +557,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          CustomButton(
-            text: 'Login',
-            onPressed: _login,
-            isLoading: _isLoading,
-          ),
+          CustomButton(text: 'Login', onPressed: _login, isLoading: _isLoading),
           if (_biometricAvailable) ...[
             const SizedBox(height: 16),
             const Row(
@@ -595,10 +598,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text(
               "Don't have an account? ",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
             ),
             TextButton(
               onPressed: _navigateToSignup,
