@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
 import 'app_drawer.dart';
 import 'bottom_nav_bar.dart';
 import 'custom_app_bar.dart';

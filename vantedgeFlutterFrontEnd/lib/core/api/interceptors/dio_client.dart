@@ -182,9 +182,9 @@ class DioClient {
       return data as T;
     }
 
-    if (data.containsKey('data')) {
-      return data['data'] as T;
-    }
+    // if (data.containsKey('data')) {
+    //   return data['data'] as T;
+    // }
 
     return data as T;
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
+import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vantedge/features/branches/presentation/widgets/account_card.dart';
 import 'package:vantedge/features/branches/presentation/widgets/account_list_item.dart';
 import 'package:vantedge/features/branches/presentation/widgets/account_shimmer_loader.dart';
@@ -12,7 +13,7 @@ import '../../../data/models/account_status.dart';
 import 'account_details_screen.dart';
 
 /// Main screen for displaying user's accounts list
-/// 
+///
 /// Features:
 /// - Pull-to-refresh
 /// - Search functionality
@@ -29,15 +30,15 @@ class AccountListScreen extends StatefulWidget {
 
 class _AccountListScreenState extends State<AccountListScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
+  final bool _isSearching = false;
   String _searchQuery = '';
-  
+
   // Sort and filter states
   _SortOption _currentSort = _SortOption.name;
   AccountType? _filterType;
   AccountStatus? _filterStatus;
   bool _showFilters = false;
-  bool _useListView = false; // Toggle between card and list view
+  final bool _useListView = false; // Toggle between card and list view
 
   @override
   void initState() {
@@ -48,7 +49,12 @@ class _AccountListScreenState extends State<AccountListScreen> {
       final provider = context.read<AccountProvider>();
       if (!provider.hasAccounts && !provider.isLoading) {
         print('💰 [AccountListScreen] Fetching accounts');
-        provider.fetchMyAccounts();
+        // provider.fetchMyAccounts();
+        final authProvider = context.read<AuthProvider>();
+        final customerId = authProvider.user?.customerId;
+        if (customerId != null) {
+          provider.fetchMyAccounts(customerId);
+        }
       }
     });
   }
@@ -61,17 +67,23 @@ class _AccountListScreenState extends State<AccountListScreen> {
 
   Future<void> _handleRefresh() async {
     print('💰 [AccountListScreen] Refreshing accounts');
-    await context.read<AccountProvider>().fetchMyAccounts();
+    // await context.read<AccountProvider>().fetchMyAccounts();
+    final authProvider = context.read<AuthProvider>();
+    final customerId = authProvider.user?.customerId;
+    if (customerId != null) {
+      await context.read<AccountProvider>().fetchMyAccounts(customerId);
+    }
   }
 
   void _navigateToDetails(String accountNumber) {
-    print('💰 [AccountListScreen] Navigating to account details: $accountNumber');
+    print(
+      '💰 [AccountListScreen] Navigating to account details: $accountNumber',
+    );
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AccountDetailsScreen(
-          accountNumber: accountNumber,
-        ),
+        builder: (context) =>
+            AccountDetailsScreen(accountNumber: accountNumber),
       ),
     );
   }
@@ -106,14 +118,19 @@ class _AccountListScreenState extends State<AccountListScreen> {
   }
 
   List<dynamic> _getFilteredAndSortedAccounts(AccountProvider provider) {
-    var accounts = provider.accounts;
+    // var accounts = provider.accounts;
+    var accounts = List<dynamic>.from(provider.accounts);
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
       accounts = accounts.where((account) {
-        return account.accountName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        return account.accountName.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
             account.accountNumber.contains(_searchQuery) ||
-            account.branchName.toLowerCase().contains(_searchQuery.toLowerCase());
+            account.branchName.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            );
       }).toList();
     }
 
@@ -139,7 +156,9 @@ class _AccountListScreenState extends State<AccountListScreen> {
         accounts.sort((a, b) => a.currentBalance.compareTo(b.currentBalance));
         break;
       case _SortOption.type:
-        accounts.sort((a, b) => a.accountType.value.compareTo(b.accountType.value));
+        accounts.sort(
+          (a, b) => a.accountType.value.compareTo(b.accountType.value),
+        );
         break;
     }
 
@@ -149,7 +168,7 @@ class _AccountListScreenState extends State<AccountListScreen> {
   @override
   Widget build(BuildContext context) {
     print('💰 [AccountListScreen] 🔨 BUILD METHOD CALLED');
-    
+
     return Consumer2<AccountProvider, BadgeCountProvider>(
       builder: (context, provider, badgeProvider, child) {
         print('💰 [AccountListScreen] Consumer builder called');
@@ -186,7 +205,12 @@ class _AccountListScreenState extends State<AccountListScreen> {
               message: provider.errorMessage!,
               onRetry: () {
                 provider.clearError();
-                provider.fetchMyAccounts();
+                // provider.fetchMyAccounts();
+                final authProvider = context.read<AuthProvider>();
+                final customerId = authProvider.user?.customerId;
+                if (customerId != null) {
+                  provider.fetchMyAccounts(customerId);
+                }
               },
             ),
           );
@@ -236,13 +260,29 @@ class _AccountListScreenState extends State<AccountListScreen> {
             print('💰 [AccountListScreen] Navigating to notifications');
             Navigator.pushNamed(context, AppRoutes.notifications);
           },
+          floatingActionButton: provider.hasAccounts
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    // TODO: Navigate to transfer screen
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transfer feature coming soon'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.send),
+                  label: const Text('Transfer'),
+                )
+              : null,
           child: Column(
             children: [
               // Filter chips
               if (_showFilters)
                 Container(
                   padding: const EdgeInsets.all(12),
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -261,7 +301,9 @@ class _AccountListScreenState extends State<AccountListScreen> {
                             selected: _filterType == AccountType.savings,
                             onSelected: (selected) {
                               setState(() {
-                                _filterType = selected ? AccountType.savings : null;
+                                _filterType = selected
+                                    ? AccountType.savings
+                                    : null;
                               });
                             },
                           ),
@@ -270,7 +312,9 @@ class _AccountListScreenState extends State<AccountListScreen> {
                             selected: _filterType == AccountType.current,
                             onSelected: (selected) {
                               setState(() {
-                                _filterType = selected ? AccountType.current : null;
+                                _filterType = selected
+                                    ? AccountType.current
+                                    : null;
                               });
                             },
                           ),
@@ -279,7 +323,9 @@ class _AccountListScreenState extends State<AccountListScreen> {
                             selected: _filterStatus == AccountStatus.active,
                             onSelected: (selected) {
                               setState(() {
-                                _filterStatus = selected ? AccountStatus.active : null;
+                                _filterStatus = selected
+                                    ? AccountStatus.active
+                                    : null;
                               });
                             },
                           ),
@@ -303,31 +349,23 @@ class _AccountListScreenState extends State<AccountListScreen> {
                   child: _useListView
                       ? _AccountsListView(
                           accounts: accounts,
-                          onTap: (account) => _navigateToDetails(account.accountNumber),
+                          onTap: (account) =>
+                              _navigateToDetails(account.accountNumber),
                           onRefresh: (account) async {
-                            await provider.refreshBalance(account.accountNumber);
+                            await provider.refreshBalance(
+                              account.accountNumber,
+                            );
                           },
                         )
                       : _AccountsGridView(
                           accounts: accounts,
-                          onTap: (account) => _navigateToDetails(account.accountNumber),
+                          onTap: (account) =>
+                              _navigateToDetails(account.accountNumber),
                         ),
                 ),
               ),
             ],
           ),
-          floatingActionButton: provider.hasAccounts
-              ? FloatingActionButton.extended(
-                  onPressed: () {
-                    // TODO: Navigate to transfer screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Transfer feature coming soon')),
-                    );
-                  },
-                  icon: const Icon(Icons.send),
-                  label: const Text('Transfer'),
-                )
-              : null,
         );
       },
     );
@@ -335,12 +373,7 @@ class _AccountListScreenState extends State<AccountListScreen> {
 }
 
 // Sort options enum
-enum _SortOption {
-  name,
-  balanceHigh,
-  balanceLow,
-  type,
-}
+enum _SortOption { name, balanceHigh, balanceLow, type }
 
 // Sort bottom sheet
 class _SortBottomSheet extends StatelessWidget {
@@ -360,10 +393,7 @@ class _SortBottomSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Sort By',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Sort By', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           ..._SortOption.values.map((option) {
             String label;
@@ -407,10 +437,7 @@ class _AccountsGridView extends StatelessWidget {
   final List accounts;
   final Function(dynamic) onTap;
 
-  const _AccountsGridView({
-    required this.accounts,
-    required this.onTap,
-  });
+  const _AccountsGridView({required this.accounts, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -420,10 +447,7 @@ class _AccountsGridView extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final account = accounts[index];
-        return AccountCard(
-          account: account,
-          onTap: () => onTap(account),
-        );
+        return AccountCard(account: account, onTap: () => onTap(account));
       },
     );
   }
@@ -514,10 +538,7 @@ class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -530,16 +551,9 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 80, color: colorScheme.error),
             const SizedBox(height: 24),
-            Text(
-              'Oops!',
-              style: theme.textTheme.headlineSmall,
-            ),
+            Text('Oops!', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 12),
             Text(
               message,
@@ -583,10 +597,7 @@ class _NoResultsState extends StatelessWidget {
               color: theme.colorScheme.primary.withOpacity(0.3),
             ),
             const SizedBox(height: 24),
-            Text(
-              'No Results Found',
-              style: theme.textTheme.headlineSmall,
-            ),
+            Text('No Results Found', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 12),
             Text(
               'Try adjusting your filters or search query',

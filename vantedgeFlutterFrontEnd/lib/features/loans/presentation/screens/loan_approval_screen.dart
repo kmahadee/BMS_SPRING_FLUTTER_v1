@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/features/loans/presentation/providers/loan_officer_provider.dart';
 import '../../data/models/loan_enums.dart';
 import '../../data/models/loan_model.dart';

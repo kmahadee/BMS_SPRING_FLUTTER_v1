@@ -32,7 +32,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       // FIXED: Removed ['data'] access since _parseResponse already unwraps it
-      final authData = AuthResponseDTO.fromJson(response);
+      // final authData = AuthResponseDTO.fromJson(response);
+      final authData = AuthResponseDTO.fromJson(response['data']);
 
       await _saveAuthData(authData);
 
@@ -76,7 +77,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       // FIXED: Removed ['data'] access since _parseResponse already unwraps it
-      final authData = AuthResponseDTO.fromJson(response);
+      // final authData = AuthResponseDTO.fromJson(response);
+      final authData = AuthResponseDTO.fromJson(response['data']);
 
       await _saveAuthData(authData);
 
@@ -170,7 +172,10 @@ class AuthRepositoryImpl implements AuthRepository {
       await _storageService.saveAccessToken(authData.accessToken);
 
       // Handle nullable refreshToken - backend doesn't provide it currently
-      if (authData.refreshToken != null) {
+      // if (authData.refreshToken != null) {
+      //   await _storageService.saveRefreshToken(authData.refreshToken!);
+      // }
+      if (authData.refreshToken != null && authData.refreshToken!.isNotEmpty) {
         await _storageService.saveRefreshToken(authData.refreshToken!);
       }
 

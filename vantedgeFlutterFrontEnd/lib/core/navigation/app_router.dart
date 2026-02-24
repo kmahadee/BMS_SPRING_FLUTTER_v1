@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vantedge/core/api/interceptors/dio_client.dart';
+import 'package:vantedge/core/di/service_locator.dart';
 import 'package:vantedge/features/accounts/presentation/presentation/screens/account_details_screen.dart';
 import 'package:vantedge/features/accounts/presentation/presentation/screens/account_list_screen.dart';
 import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
@@ -14,10 +16,20 @@ import 'package:vantedge/features/auth/presentation/screens/customer_signup_scre
 import 'package:vantedge/features/auth/presentation/screens/login_screen.dart';
 import 'package:vantedge/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:vantedge/features/auth/presentation/screens/splash_screen.dart';
+import 'package:vantedge/features/branches/data/repositories/branch_repository_impl.dart';
+import 'package:vantedge/features/branches/presentation/providers/branch_provider.dart';
 import 'package:vantedge/features/branches/presentation/screens/branch_list_screen.dart';
 
 // Home screens
 import 'package:vantedge/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:vantedge/features/dps/data/models/dps_repository.dart';
+import 'package:vantedge/features/dps/presentation/providers/dps_provider.dart';
+import 'package:vantedge/features/dps/presentation/screens/dps_create_screen.dart';
+import 'package:vantedge/features/dps/presentation/screens/dps_details_screen.dart';
+import 'package:vantedge/features/dps/presentation/screens/dps_list_screen.dart';
+import 'package:vantedge/features/dps/presentation/screens/installment_history_screen.dart';
+import 'package:vantedge/features/dps/presentation/screens/maturity_calculator_screen.dart';
+import 'package:vantedge/features/dps/presentation/screens/pay_installment_screen.dart';
 import 'package:vantedge/features/home/presentation/screens/customer_home_screen.dart';
 
 // Transaction screens
@@ -84,8 +96,7 @@ class AppRouter {
 
       // ── Accounts ─────────────────────────────────────────────────────────
       case AppRoutes.accounts:
-        return _buildRoute(
-            settings, _getAccountsScreen(), requireAuth: true);
+        return _buildRoute(settings, _getAccountsScreen(), requireAuth: true);
 
       case AppRoutes.accountDetails:
         return _buildRoute(
@@ -112,8 +123,7 @@ class AppRouter {
         );
 
       case AppRoutes.transfer:
-        return _buildRoute(
-            settings, const TransferScreen(), requireAuth: true);
+        return _buildRoute(settings, const TransferScreen(), requireAuth: true);
 
       case AppRoutes.deposit:
         final depositAcct = args is String ? args : null;
@@ -143,11 +153,7 @@ class AppRouter {
 
       /// /loans — list of the logged-in customer's loans.
       case AppRoutes.loans:
-        return _buildRoute(
-          settings,
-          const LoanListScreen(),
-          requireAuth: true,
-        );
+        return _buildRoute(settings, const LoanListScreen(), requireAuth: true);
 
       /// /loans/apply — loan application form.
       case AppRoutes.loanApplication:
@@ -192,7 +198,7 @@ class AppRouter {
       /// /officer/loans — pending-approval queue.
       /// Also handles the legacy /loans/approval path used in drawers/nav bars.
       case AppRoutes.officerLoanQueue:
-      case AppRoutes.loanApproval:  // legacy alias — still usable from drawer
+      case AppRoutes.loanApproval: // legacy alias — still usable from drawer
         return _buildRoute(
           settings,
           const OfficerLoanQueueScreen(),
@@ -236,18 +242,156 @@ class AppRouter {
           requireAuth: true,
         );
 
+      //-----DPS --------------------
+
+      // case AppRoutes.dps:
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => const DpsListScreen(),
+      //   );
+
+      // case AppRoutes.dpsDetails:
+      //   final dpsNumber = settings.arguments as String? ?? '';
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => DpsDetailsScreen(dpsNumber: dpsNumber),
+      //   );
+
+      // case AppRoutes.dpsCreate:
+      //   // Accept optional pre-fill values from the maturity calculator.
+      //   final args = settings.arguments as Map<String, dynamic>?;
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => DpsCreateScreen(
+      //       initialInstallment: args?['initialInstallment'] as double?,
+      //       initialTenure: args?['initialTenure'] as int?,
+      //       initialRate: args?['initialRate'] as double?,
+      //     ),
+      //   );
+
+      // case AppRoutes.dpsInstallments:
+      //   final dpsNumber = settings.arguments as String? ?? '';
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => InstallmentHistoryScreen(dpsNumber: dpsNumber),
+      //   );
+
+      // case AppRoutes.dpsPay:
+      //   final dpsNumber = settings.arguments as String? ?? '';
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => PayInstallmentScreen(dpsNumber: dpsNumber),
+      //   );
+
+      // case AppRoutes.dpsCalculator:
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => const MaturityCalculatorScreen(),
+      //   );
+
+      case AppRoutes.dps:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: const DpsListScreen(),
+          ),
+        );
+
+      case AppRoutes.dpsDetails:
+        final dpsNumber = settings.arguments as String? ?? '';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: DpsDetailsScreen(dpsNumber: dpsNumber),
+          ),
+        );
+
+      case AppRoutes.dpsCreate:
+        final dpsCreateArgs = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: DpsCreateScreen(
+              initialInstallment:
+                  dpsCreateArgs?['initialInstallment'] as double?,
+              initialTenure: dpsCreateArgs?['initialTenure'] as int?,
+              initialRate: dpsCreateArgs?['initialRate'] as double?,
+            ),
+          ),
+        );
+
+      // case AppRoutes.dpsCreate:
+      //   final dpsCreateArgs = settings.arguments as Map<String, dynamic>?;
+      //   return MaterialPageRoute(
+      //     settings: settings,
+      //     builder: (_) => MultiProvider(
+      //       providers: [
+      //         ChangeNotifierProvider(
+      //           create: (_) =>
+      //               DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+      //         ),
+      //         ChangeNotifierProvider(
+      //           create: (_) => BranchProvider(
+      //             repository: BranchRepositoryImpl(dioClient: DioClient()),
+      //           ),
+      //         ),
+      //       ],
+      //       child: DpsCreateScreen(
+      //         initialInstallment:
+      //             dpsCreateArgs?['initialInstallment'] as double?,
+      //         initialTenure: dpsCreateArgs?['initialTenure'] as int?,
+      //         initialRate: dpsCreateArgs?['initialRate'] as double?,
+      //       ),
+      //     ),
+      //   );
+
+      case AppRoutes.dpsInstallments:
+        final dpsNumber = settings.arguments as String? ?? '';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: InstallmentHistoryScreen(dpsNumber: dpsNumber),
+          ),
+        );
+
+      case AppRoutes.dpsPay:
+        final dpsNumber = settings.arguments as String? ?? '';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: PayInstallmentScreen(dpsNumber: dpsNumber),
+          ),
+        );
+
+      case AppRoutes.dpsCalculator:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) =>
+                DpsProvider(repository: DpsRepository(dioClient: DioClient())),
+            child: const MaturityCalculatorScreen(),
+          ),
+        );
+
       // ── Misc ──────────────────────────────────────────────────────────────
       case AppRoutes.branchManagement:
-        return _buildRoute(
-            settings, _getBranchListScreen(), requireAuth: true);
+        return _buildRoute(settings, _getBranchListScreen(), requireAuth: true);
 
       case AppRoutes.profile:
-        return _buildRoute(
-            settings, _getProfileScreen(), requireAuth: true);
+        return _buildRoute(settings, _getProfileScreen(), requireAuth: true);
 
       case AppRoutes.settings:
-        return _buildRoute(
-            settings, _getSettingsScreen(), requireAuth: true);
+        return _buildRoute(settings, _getSettingsScreen(), requireAuth: true);
 
       case AppRoutes.notifications:
         return _buildRoute(
@@ -277,8 +421,7 @@ class AppRouter {
       fullscreenDialog: fullscreenDialog,
       builder: (context) {
         if (requireAuth) {
-          return _buildAuthenticatedRoute(
-              context, screen, settings.name!);
+          return _buildAuthenticatedRoute(context, screen, settings.name!);
         }
         return screen;
       },
@@ -312,8 +455,7 @@ class AppRouter {
     );
   }
 
-  static Route<T> _buildFadeRoute<T>(
-      RouteSettings settings, Widget screen) {
+  static Route<T> _buildFadeRoute<T>(RouteSettings settings, Widget screen) {
     return PageRouteBuilder<T>(
       settings: settings,
       pageBuilder: (_, __, ___) => screen,
@@ -351,8 +493,7 @@ class AppRouter {
           begin: begin,
           end: Offset.zero,
         ).chain(CurveTween(curve: Curves.easeInOut));
-        return SlideTransition(
-            position: animation.drive(tween), child: child);
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
       transitionDuration: const Duration(milliseconds: 300),
     );
@@ -390,7 +531,7 @@ class AppRouter {
   static Widget _getAccountsScreen() => const AccountListScreen();
 
   static Widget _getAccountDetailsScreen(dynamic args) =>
-      const AccountDetailsScreen(accountNumber: '',);
+      const AccountDetailsScreen(accountNumber: '');
 
   static Widget _getBranchListScreen() => const BranchListScreen();
 
@@ -419,8 +560,7 @@ class AppRouter {
               style: TextStyle(fontSize: 20, color: Colors.grey),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-                onPressed: () {}, child: const Text('Go Back')),
+            ElevatedButton(onPressed: () {}, child: const Text('Go Back')),
           ],
         ),
       ),
@@ -436,25 +576,23 @@ extension NavigationExtension on BuildContext {
     String routeName,
     bool Function(Route<dynamic>) predicate, {
     Object? arguments,
-  }) =>
-      Navigator.pushNamedAndRemoveUntil<T>(
-        this,
-        routeName,
-        predicate,
-        arguments: arguments,
-      );
+  }) => Navigator.pushNamedAndRemoveUntil<T>(
+    this,
+    routeName,
+    predicate,
+    arguments: arguments,
+  );
 
   Future<T?> pushReplacementNamed<T, TO>(
     String routeName, {
     Object? arguments,
     TO? result,
-  }) =>
-      Navigator.pushReplacementNamed<T, TO>(
-        this,
-        routeName,
-        arguments: arguments,
-        result: result,
-      );
+  }) => Navigator.pushReplacementNamed<T, TO>(
+    this,
+    routeName,
+    arguments: arguments,
+    result: result,
+  );
 
   void pop<T>([T? result]) => Navigator.pop<T>(this, result);
 

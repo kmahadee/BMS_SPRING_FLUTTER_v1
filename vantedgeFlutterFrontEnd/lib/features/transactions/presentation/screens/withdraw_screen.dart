@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/features/accounts/data/models/account_list_item_dto.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
+import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vantedge/features/auth/presentation/widgets/signup_step_indicator.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_enums.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_model.dart';
@@ -53,9 +54,20 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
-  void _init() {
+  Future<void> _init() async {
     final ap = context.read<AccountProvider>();
-    if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+    // if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+
+
+
+    if (ap.accounts.isEmpty) {
+      final customerId = context.read<AuthProvider>().user?.customerId;
+        if (customerId != null) {
+          await ap.fetchMyAccounts(customerId);
+        }
+    }
+
+
 
     if (widget.preselectedAccountNumber != null) {
       final match = ap.accounts.where(

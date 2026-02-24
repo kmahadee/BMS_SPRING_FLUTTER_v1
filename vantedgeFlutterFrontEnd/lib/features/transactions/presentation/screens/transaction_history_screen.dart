@@ -5,13 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/features/accounts/data/models/account_list_item_dto.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
+import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vantedge/features/transactions/data/models/account_statement_model.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_history_model.dart';
 import 'package:vantedge/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:vantedge/features/transactions/presentation/widgets/account_selector.dart';
 import 'package:vantedge/features/transactions/presentation/widgets/transaction_card.dart';
 import 'package:vantedge/shared/widgets/custom_app_bar.dart';
-
 
 enum _DatePreset {
   today('Today'),
@@ -30,17 +30,28 @@ enum _DatePreset {
       case _DatePreset.today:
         return DateTimeRange(start: today, end: now);
       case _DatePreset.last7:
-        return DateTimeRange(start: today.subtract(const Duration(days: 6)), end: now);
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)),
+          end: now,
+        );
       case _DatePreset.last30:
-        return DateTimeRange(start: today.subtract(const Duration(days: 29)), end: now);
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 29)),
+          end: now,
+        );
       case _DatePreset.last3Months:
-        return DateTimeRange(start: today.subtract(const Duration(days: 89)), end: now);
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 89)),
+          end: now,
+        );
       case _DatePreset.custom:
-        return DateTimeRange(start: today.subtract(const Duration(days: 29)), end: now);
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 29)),
+          end: now,
+        );
     }
   }
 }
-
 
 class TransactionHistoryScreen extends StatefulWidget {
   final String? accountNumber;
@@ -65,7 +76,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   Future<void> _init() async {
     final ap = context.read<AccountProvider>();
-    if (ap.accounts.isEmpty) await ap.fetchMyAccounts();
+    // if (ap.accounts.isEmpty) await ap.fetchMyAccounts();
+
+    if (ap.accounts.isEmpty) {
+      final customerId = context.read<AuthProvider>().user?.customerId;
+      if (customerId != null) {
+        await ap.fetchMyAccounts(customerId);
+      }
+    }
 
     if (!mounted) return;
 
@@ -90,10 +108,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final account = _selectedAccount;
     if (account == null) return;
     await context.read<TransactionProvider>().loadStatement(
-          account.accountNumber,
-          _dateRange.start,
-          _dateRange.end,
-        );
+      account.accountNumber,
+      _dateRange.start,
+      _dateRange.end,
+    );
   }
 
   void _onAccountSelected(AccountListItemDTO account) {
@@ -111,9 +129,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         initialDateRange: _dateRange,
         builder: (ctx, child) => Theme(
           data: Theme.of(ctx).copyWith(
-            colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                  primary: Theme.of(ctx).colorScheme.primary,
-                ),
+            colorScheme: Theme.of(
+              ctx,
+            ).colorScheme.copyWith(primary: Theme.of(ctx).colorScheme.primary),
           ),
           child: child!,
         ),
@@ -133,10 +151,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   void _openDetails(TransactionHistoryModel txn) {
-    Navigator.of(context).pushNamed(
-      AppRoutes.transactionDetails,
-      arguments: txn,
-    );
+    Navigator.of(
+      context,
+    ).pushNamed(AppRoutes.transactionDetails, arguments: txn);
   }
 
   String _fmtDate(DateTime? dt) {
@@ -228,7 +245,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 }
 
-
 class _TopControls extends StatelessWidget {
   final AccountListItemDTO? selectedAccount;
   final List<AccountListItemDTO> accounts;
@@ -279,7 +295,8 @@ class _TopControls extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
                     label: Text(
-                      preset == _DatePreset.custom && activePreset == _DatePreset.custom
+                      preset == _DatePreset.custom &&
+                              activePreset == _DatePreset.custom
                           ? _customLabel(dateRange)
                           : preset.label,
                     ),
@@ -288,7 +305,9 @@ class _TopControls extends StatelessWidget {
                     showCheckmark: false,
                     labelStyle: TextStyle(
                       fontSize: 12,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       color: isActive
                           ? colorScheme.onPrimary
                           : colorScheme.onSurfaceVariant,
@@ -320,7 +339,6 @@ class _TopControls extends StatelessWidget {
   }
 }
 
-
 class _SummarySection extends StatelessWidget {
   final AccountStatementModel statement;
   final String startDate;
@@ -344,8 +362,11 @@ class _SummarySection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined,
-                  size: 14, color: colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(
                 '$startDate — $endDate',
@@ -425,7 +446,6 @@ class _SummarySection extends StatelessWidget {
   }
 }
 
-
 class _SummaryCard extends StatelessWidget {
   final String label;
   final double amount;
@@ -497,7 +517,6 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-
 class _TxnCountBadge extends StatelessWidget {
   final int count;
 
@@ -515,14 +534,13 @@ class _TxnCountBadge extends StatelessWidget {
       child: Text(
         '$count txn${count == 1 ? '' : 's'}',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w600,
-            ),
+          color: colorScheme.onPrimaryContainer,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 }
-
 
 class _EmptyState extends StatelessWidget {
   final String message;
@@ -547,17 +565,17 @@ class _EmptyState extends StatelessWidget {
             Text(
               'No transactions found',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  ),
+                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+              ),
             ),
           ],
         ),
@@ -565,7 +583,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
 
 class _ErrorState extends StatelessWidget {
   final String message;
@@ -582,23 +599,26 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded,
-                size: 56, color: colorScheme.error),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 56,
+              color: colorScheme.error,
+            ),
             const SizedBox(height: 16),
             Text(
               'Something went wrong',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

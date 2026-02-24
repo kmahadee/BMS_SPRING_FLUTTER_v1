@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vantedge/core/navigation/route_guard.dart';
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/shared/providers/badge_count_provider.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
@@ -112,6 +111,15 @@ class _AppDrawerState extends State<AppDrawer> {
                 icon: Icons.savings,
                 route: AppRoutes.dps,
               ),
+              
+              // ─── DPS Calculator ──────────────────────────────────────
+              MenuItem(
+                title: 'DPS Calculator',
+                icon: Icons.calculate_outlined,
+                route: AppRoutes.dpsCalculator,
+              ),
+
+
               MenuItem(
                 title: 'Cards',
                 icon: Icons.credit_card,

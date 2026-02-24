@@ -7,6 +7,8 @@ import 'package:vantedge/features/auth/domain/usecases/ValidateTokenUseCase.dart
 import 'package:vantedge/features/auth/domain/usecases/register_user_usecase.dart';
 import 'package:vantedge/features/customer/domain/repositories/customer_repository_impl.dart';
 import 'package:vantedge/features/customer/domain/usecases/create_customer_usecase.dart';
+import 'package:vantedge/features/dps/data/models/dps_repository.dart';
+import 'package:vantedge/features/dps/presentation/providers/dps_provider.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 
@@ -20,50 +22,89 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 // Customer imports
 import '../../features/customer/domain/repositories/customer_repository.dart';
 
-
-
 import '../storage/secure_storage_service.dart';
 import '../storage/storage_service_interface.dart';
 import 'service_locator.dart';
 
+// Future<void> init() async {
+//   try {
+//     final logger = Logger();
+//     logger.i('Initializing dependency injection container');
+
+//     await _initCore();
+//     await _initStorage();
+//     await _initNetwork();
+//     await _initRepositories();
+//     await _initUseCases();
+//     await _initProviders();
+
+//     logger.i('Dependency injection container initialized successfully');
+//   } catch (e) {
+//     final logger = Logger();
+//     logger.e('Failed to initialize dependency injection: $e');
+//     rethrow;
+//   }
+// }
+
 Future<void> init() async {
   try {
     final logger = Logger();
+    print('🚀 [DI] init() START');
     logger.i('Initializing dependency injection container');
 
+    print('🚀 [DI] calling _initCore()');
     await _initCore();
-    await _initStorage();
-    await _initNetwork();
-    await _initRepositories();
-    await _initUseCases();
-    await _initProviders();
+    print('🚀 [DI] _initCore() done');
 
+    print('🚀 [DI] calling _initStorage()');
+    await _initStorage();
+    print('🚀 [DI] _initStorage() done');
+
+    print('🚀 [DI] calling _initNetwork()');
+    await _initNetwork();
+    print('🚀 [DI] _initNetwork() done');
+
+    print('🚀 [DI] calling _initRepositories()');
+    await _initRepositories();
+    print('🚀 [DI] _initRepositories() done');
+
+    print('🚀 [DI] calling _initUseCases()');
+    await _initUseCases();
+    print('🚀 [DI] _initUseCases() done');
+
+    print('🚀 [DI] calling _initProviders()');
+    await _initProviders();
+    print('🚀 [DI] _initProviders() done');
+
+    print('🚀 [DI] init() COMPLETE ✅');
     logger.i('Dependency injection container initialized successfully');
-  } catch (e) {
+  } catch (e, st) {
     final logger = Logger();
+    print('❌ [DI] init() FAILED: $e');
+    print('❌ [DI] Stack: $st');
     logger.e('Failed to initialize dependency injection: $e');
     rethrow;
   }
 }
 
 Future<void> _initCore() async {
-  sl.registerLazySingleton<Logger>(() => Logger(
-        printer: PrettyPrinter(
-          methodCount: 0,
-          errorMethodCount: 5,
-          lineLength: 50,
-          colors: true,
-          printEmojis: true,
-        ),
-      ));
+  sl.registerLazySingleton<Logger>(
+    () => Logger(
+      printer: PrettyPrinter(
+        methodCount: 0,
+        errorMethodCount: 5,
+        lineLength: 50,
+        colors: true,
+        printEmojis: true,
+      ),
+    ),
+  );
 
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
 }
 
 Future<void> _initStorage() async {
-  const androidOptions = AndroidOptions(
-    encryptedSharedPreferences: true,
-  );
+  const androidOptions = AndroidOptions(encryptedSharedPreferences: true);
 
   const iosOptions = IOSOptions(
     accessibility: KeychainAccessibility.first_unlock,
@@ -76,13 +117,9 @@ Future<void> _initStorage() async {
     ),
   );
 
-  sl.registerLazySingleton<IStorageService>(
-    () => SecureStorageService(),
-  );
+  sl.registerLazySingleton<IStorageService>(() => SecureStorageService());
 
-  sl.registerLazySingleton<SecureStorageService>(
-    () => SecureStorageService(),
-  );
+  sl.registerLazySingleton<SecureStorageService>(() => SecureStorageService());
 }
 
 Future<void> _initNetwork() async {
@@ -93,21 +130,62 @@ Future<void> _initNetwork() async {
   });
 }
 
+// Future<void> _initRepositories() async {
+//   // Auth Repository
+//   sl.registerLazySingleton<AuthRepository>(
+//     () => AuthRepositoryImpl(
+//       dioClient: sl<DioClient>(),
+//       storageService: sl<SecureStorageService>(),
+//     ),
+//   );
+
+//   // Customer Repository
+//   sl.registerLazySingleton<CustomerRepository>(
+//     () => CustomerRepositoryImpl(
+//       dioClient: sl<DioClient>(),
+//     ),
+//   );
+
+//   // DPS
+//   sl.registerLazySingleton<DpsRepository>(
+//     () => DpsRepository(dioClient: sl<DioClient>()),
+//   );
+// }
+
 Future<void> _initRepositories() async {
+  print('🔧 [DI] _initRepositories() START');
+
   // Auth Repository
+  print('🔧 [DI] Registering AuthRepository...');
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       dioClient: sl<DioClient>(),
       storageService: sl<SecureStorageService>(),
     ),
   );
+  print('🔧 [DI] AuthRepository registered ✅');
 
   // Customer Repository
+  print('🔧 [DI] Registering CustomerRepository...');
   sl.registerLazySingleton<CustomerRepository>(
-    () => CustomerRepositoryImpl(
-      dioClient: sl<DioClient>(),
-    ),
+    () => CustomerRepositoryImpl(dioClient: sl<DioClient>()),
   );
+  print('🔧 [DI] CustomerRepository registered ✅');
+
+  // DPS Repository
+  print('🔧 [DI] Registering DpsRepository...');
+  try {
+    sl.registerLazySingleton<DpsRepository>(
+      () => DpsRepository(dioClient: sl<DioClient>()),
+    );
+    print('🔧 [DI] DpsRepository registered ✅');
+  } catch (e, st) {
+    print('❌ [DI] DpsRepository registration FAILED: $e');
+    print('❌ [DI] Stack: $st');
+    rethrow;
+  }
+
+  print('🔧 [DI] _initRepositories() END');
 }
 
 Future<void> _initUseCases() async {
@@ -120,9 +198,7 @@ Future<void> _initUseCases() async {
   );
 
   sl.registerLazySingleton<RegisterUseCase>(
-    () => RegisterUseCase(
-      repository: sl<AuthRepository>(),
-    ),
+    () => RegisterUseCase(repository: sl<AuthRepository>()),
   );
 
   sl.registerLazySingleton<LogoutUseCase>(
@@ -147,26 +223,19 @@ Future<void> _initUseCases() async {
   );
 
   sl.registerLazySingleton<CheckAuthStatusUseCase>(
-    () => CheckAuthStatusUseCase(
-      repository: sl<AuthRepository>(),
-    ),
+    () => CheckAuthStatusUseCase(repository: sl<AuthRepository>()),
   );
 
   // Customer Use Cases
   sl.registerLazySingleton<CreateCustomerUseCase>(
-    () => CreateCustomerUseCase(
-      repository: sl<CustomerRepository>(),
-    ),
+    () => CreateCustomerUseCase(repository: sl<CustomerRepository>()),
   );
-
 
   //User Registration
 
   sl.registerLazySingleton<RegisterUserUseCase>(
-  () => RegisterUserUseCase(
-    repository: sl<AuthRepository>(),
-  ),
-);
+    () => RegisterUserUseCase(repository: sl<AuthRepository>()),
+  );
 }
 
 Future<void> _initProviders() async {
@@ -183,6 +252,11 @@ Future<void> _initProviders() async {
       storageService: sl<SecureStorageService>(),
     ),
   );
+
+  // DpsProvider
+  // sl.registerFactory<DpsProvider>(
+  //   () => DpsProvider(repository: sl<DpsRepository>()),
+  // );
 }
 
 Future<void> reset() async {

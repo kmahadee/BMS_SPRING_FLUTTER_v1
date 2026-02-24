@@ -151,8 +151,9 @@ class _LoanApplicationScreenState extends State<LoanApplicationScreen> {
   int get _parsedTenure => int.tryParse(_tenureCtrl.text) ?? 0;
 
   LoanCalculationResult? get _emiResult {
-    if (_parsedAmount <= 0 || _parsedRate <= 0 || _parsedTenure <= 0)
+    if (_parsedAmount <= 0 || _parsedRate <= 0 || _parsedTenure <= 0) {
       return null;
+    }
     return LoanCalculator.calculate(
       principal: _parsedAmount,
       annualRate: _parsedRate,
@@ -176,9 +177,17 @@ class _LoanApplicationScreenState extends State<LoanApplicationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
+  // void _init() {
+  //   final ap = context.read<AccountProvider>();
+  //   if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+  // }
+
   void _init() {
     final ap = context.read<AccountProvider>();
-    if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+    if (ap.accounts.isEmpty) {
+      final customerId = context.read<AuthProvider>().user?.customerId;
+      if (customerId != null) ap.fetchMyAccounts(customerId);
+    }
   }
 
   @override
@@ -212,9 +221,38 @@ class _LoanApplicationScreenState extends State<LoanApplicationScreen> {
 
   // ─── Navigation ────────────────────────────────────────────────────────────
 
+  // void _advance() {
+  //   final formKey = _formKeys[_currentPageIndex];
+  //   if (!(formKey.currentState?.validate() ?? false)) return;
+
+  //   // Extra guards for step 1
+  //   if (_currentPageIndex == 0) {
+  //     if (_selectedAccount == null) {
+  //       _showWarning('Please select a disbursement account.');
+  //       return;
+  //     }
+  //   }
+
+  //   if (_currentStep < _totalVisibleSteps - 1) {
+  //     setState(() => _currentStep++);
+  //     _pageCtrl.animateToPage(
+  //       _currentPageIndex,
+  //       duration: const Duration(milliseconds: 320),
+  //       curve: Curves.easeInOut,
+  //     );
+  //   } else {
+  //     _submit();
+  //   }
+  // }
+
   void _advance() {
-    final formKey = _formKeys[_currentPageIndex];
-    if (!(formKey.currentState?.validate() ?? false)) return;
+    // Skip form validation on the review step
+    final isReviewStep = _currentStep == _totalVisibleSteps - 1;
+
+    if (!isReviewStep) {
+      final formKey = _formKeys[_currentPageIndex];
+      if (!(formKey.currentState?.validate() ?? false)) return;
+    }
 
     // Extra guards for step 1
     if (_currentPageIndex == 0) {
@@ -959,12 +997,15 @@ class _StepTypeAmount extends StatelessWidget {
             ),
             validator: (v) {
               final amount = double.tryParse(v ?? '');
-              if (amount == null || amount <= 0)
+              if (amount == null || amount <= 0) {
                 return 'Please enter a valid amount.';
-              if (amount < _kMinAmount)
+              }
+              if (amount < _kMinAmount) {
                 return 'Minimum loan amount is ৳${_kMinAmount.toStringAsFixed(0)}.';
-              if (amount > _kMaxAmount)
+              }
+              if (amount > _kMaxAmount) {
                 return 'Maximum loan amount is ৳${_kMaxAmount.toStringAsFixed(0)}.';
+              }
               return null;
             },
           ),
@@ -989,10 +1030,12 @@ class _StepTypeAmount extends StatelessWidget {
             validator: (v) {
               final rate = double.tryParse(v ?? '');
               if (rate == null) return 'Please enter a valid interest rate.';
-              if (rate < _kMinRate)
+              if (rate < _kMinRate) {
                 return 'Minimum rate is ${_kMinRate.toStringAsFixed(1)}%.';
-              if (rate > _kMaxRate)
+              }
+              if (rate > _kMaxRate) {
                 return 'Maximum rate is ${_kMaxRate.toStringAsFixed(1)}%.';
+              }
               return null;
             },
           ),
@@ -1023,10 +1066,12 @@ class _StepTypeAmount extends StatelessWidget {
             validator: (v) {
               final t = int.tryParse(v ?? '');
               if (t == null || t <= 0) return 'Please enter a valid tenure.';
-              if (t < _kMinTenure)
+              if (t < _kMinTenure) {
                 return 'Minimum tenure is $_kMinTenure months.';
-              if (t > _kMaxTenure)
+              }
+              if (t > _kMaxTenure) {
                 return 'Maximum tenure is $_kMaxTenure months.';
+              }
               return null;
             },
           ),
@@ -1113,10 +1158,12 @@ class _StepPersonalInfo extends StatelessWidget {
             validator: (v) {
               final age = int.tryParse(v ?? '');
               if (age == null) return 'Please enter your age.';
-              if (age < _kMinAge)
+              if (age < _kMinAge) {
                 return 'Minimum eligible age is $_kMinAge years.';
-              if (age > _kMaxAge)
+              }
+              if (age > _kMaxAge) {
                 return 'Maximum eligible age is $_kMaxAge years.';
+              }
               return null;
             },
           ),
@@ -1162,10 +1209,12 @@ class _StepPersonalInfo extends StatelessWidget {
             ),
             validator: (v) {
               final income = double.tryParse(v ?? '');
-              if (income == null || income <= 0)
+              if (income == null || income <= 0) {
                 return 'Please enter your monthly income.';
-              if (income < _kMinIncome)
+              }
+              if (income < _kMinIncome) {
                 return 'Minimum monthly income is ৳${_kMinIncome.toStringAsFixed(0)}.';
+              }
               return null;
             },
           ),
@@ -1189,8 +1238,9 @@ class _StepPersonalInfo extends StatelessWidget {
             validator: (v) {
               if (v == null || v.isEmpty) return null;
               final emi = double.tryParse(v);
-              if (emi == null || emi < 0)
+              if (emi == null || emi < 0) {
                 return 'Please enter a valid EMI amount.';
+              }
               return null;
             },
           ),
@@ -1309,8 +1359,9 @@ class _StepCollateral extends StatelessWidget {
               prefix: const Icon(Icons.apartment_rounded),
             ),
             validator: (v) {
-              if (v == null || v.trim().isEmpty)
+              if (v == null || v.trim().isEmpty) {
                 return 'Collateral type is required.';
+              }
               return null;
             },
           ),
@@ -1332,8 +1383,9 @@ class _StepCollateral extends StatelessWidget {
             ),
             validator: (v) {
               final val = double.tryParse(v ?? '');
-              if (val == null || val <= 0)
+              if (val == null || val <= 0) {
                 return 'Please enter the estimated collateral value.';
+              }
               return null;
             },
           ),

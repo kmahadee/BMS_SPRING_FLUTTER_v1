@@ -10,7 +10,6 @@ import 'package:vantedge/features/loans/data/models/loan_model.dart';
 import 'package:vantedge/features/loans/presentation/providers/loan_provider.dart';
 import 'package:vantedge/features/loans/presentation/widgets/loan_card.dart';
 import 'package:vantedge/features/loans/presentation/widgets/loan_enum_display_helpers.dart';
-import 'package:vantedge/features/loans/presentation/widgets/loan_status_badge.dart';
 // import 'package:vantedge/shared/widgets/empty_state.dart';
 import 'package:vantedge/shared/widgets/main_scaffold.dart';
 

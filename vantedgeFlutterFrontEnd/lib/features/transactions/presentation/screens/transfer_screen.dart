@@ -8,6 +8,7 @@ import 'package:vantedge/features/accounts/data/models/account_list_item_dto.dar
 import 'package:vantedge/features/accounts/data/models/account_status.dart';
 import 'package:vantedge/features/accounts/data/models/account_type.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
+import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vantedge/features/auth/presentation/widgets/signup_step_indicator.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_enums.dart';
 import 'package:vantedge/features/transactions/data/models/transaction_model.dart';
@@ -18,13 +19,10 @@ import 'package:vantedge/features/transactions/presentation/widgets/account_sele
 import 'package:vantedge/shared/widgets/custom_app_bar.dart';
 import 'package:vantedge/shared/widgets/custom_button.dart';
 
-
-
-const double _kNormalFee       = 2.00;
-const double _kHighFee         = 7.00;
-const double _kServiceTaxRate  = 0.18;
-const double _kRtgsMinimum     = 2000.00;
-
+const double _kNormalFee = 2.00;
+const double _kHighFee = 7.00;
+const double _kServiceTaxRate = 0.18;
+const double _kRtgsMinimum = 2000.00;
 
 class TransferScreen extends StatefulWidget {
   final String? preselectedAccountNumber;
@@ -44,26 +42,26 @@ class _TransferScreenState extends State<TransferScreen> {
   final GlobalKey<FormState> _step1Key = GlobalKey<FormState>();
 
   AccountListItemDTO? _sourceAccount;
-  AccountListItemDTO? _destinationAccount;          // OWN type only
+  AccountListItemDTO? _destinationAccount; // OWN type only
   final TextEditingController _destNumberCtrl = TextEditingController();
-  TransferType  _transferType  = TransferType.other;
-  TransferMode  _transferMode  = TransferMode.neft;
+  TransferType _transferType = TransferType.other;
+  TransferMode _transferMode = TransferMode.neft;
 
-  final TextEditingController _amountCtrl      = TextEditingController();
+  final TextEditingController _amountCtrl = TextEditingController();
   final TextEditingController _descriptionCtrl = TextEditingController();
-  final TextEditingController _remarksCtrl     = TextEditingController();
-  double _amount   = 0.0;
+  final TextEditingController _remarksCtrl = TextEditingController();
+  double _amount = 0.0;
   String _priority = 'normal';
 
-  bool   get _isFreeTransfer => _transferType == TransferType.own;
-  double get _baseFee        => _isFreeTransfer ? 0.0 : (_priority == 'high' ? _kHighFee : _kNormalFee);
-  double get _tax            => _baseFee * _kServiceTaxRate;
-  double get _totalFee       => _baseFee + _tax;
-  double get _totalDebit     => _amount + _totalFee;
+  bool get _isFreeTransfer => _transferType == TransferType.own;
+  double get _baseFee =>
+      _isFreeTransfer ? 0.0 : (_priority == 'high' ? _kHighFee : _kNormalFee);
+  double get _tax => _baseFee * _kServiceTaxRate;
+  double get _totalFee => _baseFee + _tax;
+  double get _totalDebit => _amount + _totalFee;
 
-  bool             _isSuccess          = false;
+  bool _isSuccess = false;
   TransactionModel? _completedTxn;
-
 
   @override
   void initState() {
@@ -71,9 +69,16 @@ class _TransferScreenState extends State<TransferScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
-  void _init() {
+  Future<void> _init() async {
     final ap = context.read<AccountProvider>();
-    if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+    // if (ap.accounts.isEmpty) ap.fetchMyAccounts();
+
+    if (ap.accounts.isEmpty) {
+      final customerId = context.read<AuthProvider>().user?.customerId;
+      if (customerId != null) {
+        await ap.fetchMyAccounts(customerId);
+      }
+    }
 
     if (widget.preselectedAccountNumber != null) {
       final match = ap.accounts.where(
@@ -92,7 +97,6 @@ class _TransferScreenState extends State<TransferScreen> {
     _remarksCtrl.dispose();
     super.dispose();
   }
-
 
   void _advance() {
     final formKey = _currentStep == 0 ? _step0Key : _step1Key;
@@ -159,7 +163,6 @@ class _TransferScreenState extends State<TransferScreen> {
     }
   }
 
-
   void _showConfirmation() {
     showDialog<void>(
       context: context,
@@ -169,15 +172,15 @@ class _TransferScreenState extends State<TransferScreen> {
         destinationDisplay: _transferType == TransferType.own
             ? _destinationAccount!.accountNumber
             : _destNumberCtrl.text.trim(),
-        amount:      _amount,
-        baseFee:     _baseFee,
-        tax:         _tax,
-        totalDebit:  _totalDebit,
+        amount: _amount,
+        baseFee: _baseFee,
+        tax: _tax,
+        totalDebit: _totalDebit,
         transferMode: _transferMode,
         transferType: _transferType,
-        priority:    _priority,
+        priority: _priority,
         description: _descriptionCtrl.text.trim(),
-        fmt:         _fmt,
+        fmt: _fmt,
         onConfirm: () {
           Navigator.of(ctx).pop();
           _submit();
@@ -187,7 +190,6 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
 
-
   Future<void> _submit() async {
     final txnProvider = context.read<TransactionProvider>();
 
@@ -196,11 +198,15 @@ class _TransferScreenState extends State<TransferScreen> {
       toAccountNumber: _transferType == TransferType.own
           ? _destinationAccount!.accountNumber
           : _destNumberCtrl.text.trim(),
-      amount:       _amount,
+      amount: _amount,
       transferMode: _transferMode,
-      description:  _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
-      remarks:      _remarksCtrl.text.trim().isEmpty ? null : _remarksCtrl.text.trim(),
-      priority:     _priority,
+      description: _descriptionCtrl.text.trim().isEmpty
+          ? null
+          : _descriptionCtrl.text.trim(),
+      remarks: _remarksCtrl.text.trim().isEmpty
+          ? null
+          : _remarksCtrl.text.trim(),
+      priority: _priority,
       transferType: _transferType,
     );
 
@@ -209,29 +215,29 @@ class _TransferScreenState extends State<TransferScreen> {
 
     if (success) {
       setState(() {
-        _isSuccess   = true;
+        _isSuccess = true;
         _completedTxn = txnProvider.lastTransaction;
       });
     } else {
-      final msg = txnProvider.errorMessage ?? 'Transfer failed. Please try again.';
+      final msg =
+          txnProvider.errorMessage ?? 'Transfer failed. Please try again.';
       _showError(msg);
       txnProvider.clearError();
     }
   }
 
-
   void _startOver() {
     setState(() {
-      _isSuccess        = false;
-      _completedTxn     = null;
-      _currentStep      = 0;
-      _sourceAccount    = null;
+      _isSuccess = false;
+      _completedTxn = null;
+      _currentStep = 0;
+      _sourceAccount = null;
       _destinationAccount = null;
       _destNumberCtrl.clear();
-      _transferType  = TransferType.other;
-      _transferMode  = TransferMode.neft;
+      _transferType = TransferType.other;
+      _transferMode = TransferMode.neft;
       _amountCtrl.clear();
-      _amount   = 0.0;
+      _amount = 0.0;
       _descriptionCtrl.clear();
       _remarksCtrl.clear();
       _priority = 'normal';
@@ -239,39 +245,45 @@ class _TransferScreenState extends State<TransferScreen> {
     _pageController.jumpToPage(0);
   }
 
-
   String _fmt(double v) => '৳${NumberFormat('#,##0.00').format(v)}';
 
   void _showWarning(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        const Icon(Icons.warning_amber_rounded, color: Colors.white),
-        const SizedBox(width: 10),
-        Expanded(child: Text(msg)),
-      ]),
-      backgroundColor: Colors.orange[800],
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      duration: const Duration(seconds: 4),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: Colors.orange[800],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        const Icon(Icons.error_outline, color: Colors.white),
-        const SizedBox(width: 10),
-        Expanded(child: Text(msg)),
-      ]),
-      backgroundColor: Colors.red[700],
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      duration: const Duration(seconds: 5),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -283,32 +295,36 @@ class _TransferScreenState extends State<TransferScreen> {
         showNotifications: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: _isSuccess ? 'Done' : (_currentStep == 0 ? 'Cancel' : 'Back'),
-          onPressed: _isSuccess
-              ? () => Navigator.of(context).pop()
-              : _retreat,
+          tooltip: _isSuccess
+              ? 'Done'
+              : (_currentStep == 0 ? 'Cancel' : 'Back'),
+          onPressed: _isSuccess ? () => Navigator.of(context).pop() : _retreat,
         ),
       ),
       body: Stack(
         children: [
           _isSuccess
               ? _SuccessView(
-                  txn:          _completedTxn,
-                  baseFee:      _baseFee,
-                  tax:          _tax,
-                  totalDebit:   _totalDebit,
-                  fmt:          _fmt,
+                  txn: _completedTxn,
+                  baseFee: _baseFee,
+                  tax: _tax,
+                  totalDebit: _totalDebit,
+                  fmt: _fmt,
                   onNewTransfer: _startOver,
                   onHome: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                    AppRoutes.customerHome, (_) => false,
+                    AppRoutes.customerHome,
+                    (_) => false,
                   ),
                 )
               : Column(
                   children: [
                     SignupStepIndicator(
                       currentStep: _currentStep,
-                      totalSteps:  _kTotalSteps,
-                      stepLabels:  const ['Source & Destination', 'Amount & Details'],
+                      totalSteps: _kTotalSteps,
+                      stepLabels: const [
+                        'Source & Destination',
+                        'Amount & Details',
+                      ],
                     ),
                     Expanded(
                       child: PageView(
@@ -316,43 +332,48 @@ class _TransferScreenState extends State<TransferScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         children: [
                           _Step0(
-                            formKey:          _step0Key,
-                            sourceAccount:    _sourceAccount,
-                            destAccount:      _destinationAccount,
-                            destNumberCtrl:   _destNumberCtrl,
-                            transferType:     _transferType,
-                            transferMode:     _transferMode,
-                            onSourceSelected: (a) => setState(() => _sourceAccount = a),
-                            onDestSelected:   (a) => setState(() => _destinationAccount = a),
-                            onTypeChanged:    (t) => setState(() {
+                            formKey: _step0Key,
+                            sourceAccount: _sourceAccount,
+                            destAccount: _destinationAccount,
+                            destNumberCtrl: _destNumberCtrl,
+                            transferType: _transferType,
+                            transferMode: _transferMode,
+                            onSourceSelected: (a) =>
+                                setState(() => _sourceAccount = a),
+                            onDestSelected: (a) =>
+                                setState(() => _destinationAccount = a),
+                            onTypeChanged: (t) => setState(() {
                               _transferType = t;
-                              if (t == TransferType.own) _transferMode = TransferMode.imps;
+                              if (t == TransferType.own)
+                                _transferMode = TransferMode.imps;
                             }),
-                            onModeChanged: (m) => setState(() => _transferMode = m),
+                            onModeChanged: (m) =>
+                                setState(() => _transferMode = m),
                           ),
                           _Step1(
-                            formKey:         _step1Key,
-                            amountCtrl:      _amountCtrl,
+                            formKey: _step1Key,
+                            amountCtrl: _amountCtrl,
                             descriptionCtrl: _descriptionCtrl,
-                            remarksCtrl:     _remarksCtrl,
-                            maxAmount:       _sourceAccount?.availableBalance,
-                            transferType:    _transferType,
-                            transferMode:    _transferMode,
-                            priority:        _priority,
-                            amount:          _amount,
-                            baseFee:         _baseFee,
-                            tax:             _tax,
-                            totalDebit:      _totalDebit,
-                            fmt:             _fmt,
+                            remarksCtrl: _remarksCtrl,
+                            maxAmount: _sourceAccount?.availableBalance,
+                            transferType: _transferType,
+                            transferMode: _transferMode,
+                            priority: _priority,
+                            amount: _amount,
+                            baseFee: _baseFee,
+                            tax: _tax,
+                            totalDebit: _totalDebit,
+                            fmt: _fmt,
                             onAmountChanged: (v) => setState(() => _amount = v),
-                            onPriorityChanged: (p) => setState(() => _priority = p),
+                            onPriorityChanged: (p) =>
+                                setState(() => _priority = p),
                           ),
                         ],
                       ),
                     ),
                     _BottomBar(
                       currentStep: _currentStep,
-                      isLoading:   txnProvider.isLoading,
+                      isLoading: txnProvider.isLoading,
                       nextLabel: _currentStep == _kTotalSteps - 1
                           ? 'Review Transfer'
                           : 'Continue',
@@ -386,18 +407,17 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 }
 
-
 class _Step0 extends StatelessWidget {
-  final GlobalKey<FormState>         formKey;
-  final AccountListItemDTO?          sourceAccount;
-  final AccountListItemDTO?          destAccount;
-  final TextEditingController        destNumberCtrl;
-  final TransferType                 transferType;
-  final TransferMode                 transferMode;
+  final GlobalKey<FormState> formKey;
+  final AccountListItemDTO? sourceAccount;
+  final AccountListItemDTO? destAccount;
+  final TextEditingController destNumberCtrl;
+  final TransferType transferType;
+  final TransferMode transferMode;
   final ValueChanged<AccountListItemDTO> onSourceSelected;
   final ValueChanged<AccountListItemDTO> onDestSelected;
-  final ValueChanged<TransferType>   onTypeChanged;
-  final ValueChanged<TransferMode>   onModeChanged;
+  final ValueChanged<TransferType> onTypeChanged;
+  final ValueChanged<TransferMode> onModeChanged;
 
   const _Step0({
     required this.formKey,
@@ -414,9 +434,9 @@ class _Step0 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme       = Theme.of(context);
-    final cs          = theme.colorScheme;
-    final ap          = context.watch<AccountProvider>();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final ap = context.watch<AccountProvider>();
     final allAccounts = ap.accounts;
 
     final destAccounts = allAccounts
@@ -429,19 +449,24 @@ class _Step0 extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         children: [
-          _SectionHeader(icon: Icons.account_balance_wallet_outlined, label: 'From Account'),
+          _SectionHeader(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'From Account',
+          ),
           const SizedBox(height: 8),
           AccountSelectorWidget(
             label: 'Source Account',
             accounts: allAccounts,
             selectedAccount: sourceAccount,
             onSelected: onSourceSelected,
-            validator: (v) => v == null ? 'Please select a source account.' : null,
+            validator: (v) =>
+                v == null ? 'Please select a source account.' : null,
           ),
           if (sourceAccount != null && !sourceAccount!.status.canTransact) ...[
             const SizedBox(height: 8),
             _InlineAlert(
-              message: 'This account is ${sourceAccount!.status.displayName} '
+              message:
+                  'This account is ${sourceAccount!.status.displayName} '
                   'and cannot send transfers.',
               isError: true,
             ),
@@ -449,7 +474,10 @@ class _Step0 extends StatelessWidget {
 
           const SizedBox(height: 22),
 
-          _SectionHeader(icon: Icons.swap_horiz_rounded, label: 'Transfer Type'),
+          _SectionHeader(
+            icon: Icons.swap_horiz_rounded,
+            label: 'Transfer Type',
+          ),
           const SizedBox(height: 8),
           SegmentedButton<TransferType>(
             segments: const [
@@ -499,13 +527,16 @@ class _Step0 extends StatelessWidget {
               accounts: destAccounts,
               selectedAccount: destAccount,
               onSelected: onDestSelected,
-              validator: (v) => v == null ? 'Please select a destination account.' : null,
+              validator: (v) =>
+                  v == null ? 'Please select a destination account.' : null,
             )
           else
             TextFormField(
               controller: destNumberCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              keyboardType: TextInputType.text,
+              inputFormatters: [
+                FilteringTextInputFormatter.singleLineFormatter,
+              ],
               maxLength: 16,
               textInputAction: TextInputAction.next,
               decoration: _inputDecoration(
@@ -518,7 +549,8 @@ class _Step0 extends StatelessWidget {
                 if (v == null || v.trim().isEmpty) {
                   return 'Please enter the destination account number.';
                 }
-                if (v.trim().length < 10) return 'Account number must be at least 10 digits.';
+                if (v.trim().length < 10)
+                  return 'Account number must be at least 10 digits.';
                 if (v.trim() == sourceAccount?.accountNumber) {
                   return 'Destination cannot be the same as the source account.';
                 }
@@ -529,34 +561,51 @@ class _Step0 extends StatelessWidget {
           const SizedBox(height: 22),
 
           if (transferType == TransferType.other) ...[
-            _SectionHeader(icon: Icons.account_tree_outlined, label: 'Transfer Mode'),
-            const SizedBox(height: 8),
+            _SectionHeader(
+              icon: Icons.account_tree_outlined,
+              label: 'Transfer Mode',
+            ),
+            const SizedBox(height: 25),
             DropdownButtonFormField<TransferMode>(
               initialValue: transferMode,
               isExpanded: true,
               decoration: _inputDecoration(cs, label: 'Mode'),
-              onChanged: (v) { if (v != null) onModeChanged(v); },
+              onChanged: (v) {
+                if (v != null) onModeChanged(v);
+              },
               items: const [
                 DropdownMenuItem(
                   value: TransferMode.neft,
-                  child: _ModeOption(label: 'NEFT', sub: 'National Electronic Funds Transfer'),
+                  child: _ModeOption(
+                    label: 'NEFT',
+                    sub: 'National Electronic Funds Transfer',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: TransferMode.rtgs,
-                  child: _ModeOption(label: 'RTGS', sub: 'Real-Time Gross Settlement · min ৳2,000'),
+                  child: _ModeOption(
+                    label: 'RTGS',
+                    sub: 'Real-Time Gross Settlement · min ৳2,000',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: TransferMode.imps,
-                  child: _ModeOption(label: 'IMPS', sub: 'Immediate Payment Service · 24/7'),
+                  child: _ModeOption(
+                    label: 'IMPS',
+                    sub: 'Immediate Payment Service · 24/7',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: TransferMode.upi,
-                  child: _ModeOption(label: 'UPI', sub: 'Unified Payments Interface'),
+                  child: _ModeOption(
+                    label: 'UPI',
+                    sub: 'Unified Payments Interface',
+                  ),
                 ),
               ],
             ),
             if (transferMode == TransferMode.rtgs) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               _InlineAlert(message: 'RTGS minimum: ৳2,000.00.'),
             ],
           ] else ...[
@@ -568,8 +617,11 @@ class _Step0 extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      color: cs.onSecondaryContainer, size: 18),
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: cs.onSecondaryContainer,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -624,23 +676,22 @@ class _Step0 extends StatelessWidget {
   }
 }
 
-
 class _Step1 extends StatelessWidget {
-  final GlobalKey<FormState>   formKey;
-  final TextEditingController  amountCtrl;
-  final TextEditingController  descriptionCtrl;
-  final TextEditingController  remarksCtrl;
-  final double?                maxAmount;
-  final TransferType           transferType;
-  final TransferMode           transferMode;
-  final String                 priority;
-  final double                 amount;
-  final double                 baseFee;
-  final double                 tax;
-  final double                 totalDebit;
+  final GlobalKey<FormState> formKey;
+  final TextEditingController amountCtrl;
+  final TextEditingController descriptionCtrl;
+  final TextEditingController remarksCtrl;
+  final double? maxAmount;
+  final TransferType transferType;
+  final TransferMode transferMode;
+  final String priority;
+  final double amount;
+  final double baseFee;
+  final double tax;
+  final double totalDebit;
   final String Function(double) fmt;
-  final ValueChanged<double>   onAmountChanged;
-  final ValueChanged<String>   onPriorityChanged;
+  final ValueChanged<double> onAmountChanged;
+  final ValueChanged<String> onPriorityChanged;
 
   const _Step1({
     required this.formKey,
@@ -665,24 +716,29 @@ class _Step1 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     final bool rtgsError =
-        transferMode == TransferMode.rtgs && amount > 0 && amount < _kRtgsMinimum;
+        transferMode == TransferMode.rtgs &&
+        amount > 0 &&
+        amount < _kRtgsMinimum;
 
     return Form(
       key: formKey,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         children: [
-          _SectionHeader(icon: Icons.payments_outlined, label: 'Transfer Amount'),
+          _SectionHeader(
+            icon: Icons.payments_outlined,
+            label: 'Transfer Amount',
+          ),
           const SizedBox(height: 8),
           AmountInputWidget(
-            controller:     amountCtrl,
+            controller: amountCtrl,
             currencySymbol: '৳',
-            maxAmount:      maxAmount,
-            label:          'Amount',
-            onChanged:      onAmountChanged,
+            maxAmount: maxAmount,
+            label: 'Amount',
+            onChanged: onAmountChanged,
           ),
           if (rtgsError) ...[
             const SizedBox(height: 6),
@@ -695,7 +751,10 @@ class _Step1 extends StatelessWidget {
           const SizedBox(height: 22),
 
           if (!_isFree) ...[
-            _SectionHeader(icon: Icons.flash_on_outlined, label: 'Transfer Priority'),
+            _SectionHeader(
+              icon: Icons.flash_on_outlined,
+              label: 'Transfer Priority',
+            ),
             const SizedBox(height: 8),
             SegmentedButton<String>(
               segments: const [
@@ -714,7 +773,9 @@ class _Step1 extends StatelessWidget {
               onSelectionChanged: (s) => onPriorityChanged(s.first),
               style: ButtonStyle(
                 shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -730,19 +791,29 @@ class _Step1 extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Row(children: [
-                  Icon(Icons.receipt_outlined, size: 15, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Transfer Summary',
-                    style: theme.textTheme.labelMedium?.copyWith(
+                Row(
+                  children: [
+                    Icon(
+                      Icons.receipt_outlined,
+                      size: 15,
                       color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                ]),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Transfer Summary',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                _SummaryLine(label: 'Transfer Amount', value: amount > 0 ? fmt(amount) : '—', theme: theme),
+                _SummaryLine(
+                  label: 'Transfer Amount',
+                  value: amount > 0 ? fmt(amount) : '—',
+                  theme: theme,
+                ),
                 const SizedBox(height: 5),
                 _SummaryLine(
                   label: 'Transfer Fee',
@@ -752,7 +823,11 @@ class _Step1 extends StatelessWidget {
                 ),
                 if (!_isFree && tax > 0) ...[
                   const SizedBox(height: 5),
-                  _SummaryLine(label: 'Service Tax (18%)', value: tax > 0 ? fmt(tax) : '—', theme: theme),
+                  _SummaryLine(
+                    label: 'Service Tax (18%)',
+                    value: tax > 0 ? fmt(tax) : '—',
+                    theme: theme,
+                  ),
                 ],
                 const Divider(height: 16),
                 _SummaryLine(
@@ -767,7 +842,10 @@ class _Step1 extends StatelessWidget {
 
           const SizedBox(height: 22),
 
-          _SectionHeader(icon: Icons.notes_rounded, label: 'Details (Optional)'),
+          _SectionHeader(
+            icon: Icons.notes_rounded,
+            label: 'Details (Optional)',
+          ),
           const SizedBox(height: 8),
           TextFormField(
             controller: descriptionCtrl,
@@ -778,7 +856,9 @@ class _Step1 extends StatelessWidget {
               labelText: 'Description',
               hintText: 'e.g. Monthly rent payment',
               prefixIcon: const Icon(Icons.description_outlined),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: cs.outline),
@@ -789,7 +869,10 @@ class _Step1 extends StatelessWidget {
               ),
               filled: true,
               fillColor: cs.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -802,7 +885,9 @@ class _Step1 extends StatelessWidget {
               labelText: 'Remarks',
               hintText: 'Internal notes (optional)',
               prefixIcon: const Icon(Icons.comment_outlined),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: cs.outline),
@@ -813,7 +898,10 @@ class _Step1 extends StatelessWidget {
               ),
               filled: true,
               fillColor: cs.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
           ),
         ],
@@ -822,21 +910,20 @@ class _Step1 extends StatelessWidget {
   }
 }
 
-
 class _ConfirmationDialog extends StatelessWidget {
-  final AccountListItemDTO       sourceAccount;
-  final String                   destinationDisplay;
-  final double                   amount;
-  final double                   baseFee;
-  final double                   tax;
-  final double                   totalDebit;
-  final TransferMode             transferMode;
-  final TransferType             transferType;
-  final String                   priority;
-  final String                   description;
-  final String Function(double)  fmt;
-  final VoidCallback             onConfirm;
-  final VoidCallback             onCancel;
+  final AccountListItemDTO sourceAccount;
+  final String destinationDisplay;
+  final double amount;
+  final double baseFee;
+  final double tax;
+  final double totalDebit;
+  final TransferMode transferMode;
+  final TransferType transferType;
+  final String priority;
+  final String description;
+  final String Function(double) fmt;
+  final VoidCallback onConfirm;
+  final VoidCallback onCancel;
 
   const _ConfirmationDialog({
     required this.sourceAccount,
@@ -860,7 +947,7 @@ class _ConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -872,7 +959,11 @@ class _ConfirmationDialog extends StatelessWidget {
               color: cs.primaryContainer,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.send_rounded, color: cs.onPrimaryContainer, size: 22),
+            child: Icon(
+              Icons.send_rounded,
+              color: cs.onPrimaryContainer,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -896,13 +987,17 @@ class _ConfirmationDialog extends StatelessWidget {
               ),
               child: Text(
                 'Please review carefully. This action cannot be undone.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onTertiaryContainer),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onTertiaryContainer,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            _ConfirmRow(label: 'From', value: _mask(sourceAccount.accountNumber)),
-            _ConfirmRow(label: 'To',   value: _mask(destinationDisplay)),
+            _ConfirmRow(
+              label: 'From',
+              value: _mask(sourceAccount.accountNumber),
+            ),
+            _ConfirmRow(label: 'To', value: _mask(destinationDisplay)),
             _ConfirmRow(
               label: 'Mode',
               value: transferType == TransferType.own
@@ -919,7 +1014,11 @@ class _ConfirmationDialog extends StatelessWidget {
             ),
             if (tax > 0) _ConfirmRow(label: 'Tax (18%)', value: fmt(tax)),
             const Divider(height: 12),
-            _ConfirmRow(label: 'Total Debit', value: fmt(totalDebit), isTotal: true),
+            _ConfirmRow(
+              label: 'Total Debit',
+              value: fmt(totalDebit),
+              isTotal: true,
+            ),
             if (description.isNotEmpty) ...[
               const SizedBox(height: 6),
               _ConfirmRow(label: 'Description', value: description),
@@ -931,7 +1030,9 @@ class _ConfirmationDialog extends StatelessWidget {
         OutlinedButton(
           onPressed: onCancel,
           style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           child: const Text('Edit'),
         ),
@@ -940,7 +1041,9 @@ class _ConfirmationDialog extends StatelessWidget {
           icon: const Icon(Icons.check_rounded, size: 18),
           label: const Text('Confirm'),
           style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         ),
       ],
@@ -948,15 +1051,14 @@ class _ConfirmationDialog extends StatelessWidget {
   }
 }
 
-
 class _SuccessView extends StatelessWidget {
-  final TransactionModel?      txn;
-  final double                 baseFee;
-  final double                 tax;
-  final double                 totalDebit;
+  final TransactionModel? txn;
+  final double baseFee;
+  final double tax;
+  final double totalDebit;
   final String Function(double) fmt;
-  final VoidCallback           onNewTransfer;
-  final VoidCallback           onHome;
+  final VoidCallback onNewTransfer;
+  final VoidCallback onHome;
 
   const _SuccessView({
     required this.txn,
@@ -974,14 +1076,15 @@ class _SuccessView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Column(
         children: [
           Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: const BoxDecoration(
               color: Color(0xFFE8F5E9),
               shape: BoxShape.circle,
@@ -995,15 +1098,17 @@ class _SuccessView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Transfer Successful!',
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Your funds have been transferred successfully.',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
 
           const SizedBox(height: 28),
@@ -1025,21 +1130,39 @@ class _SuccessView extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'Transaction Receipt',
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
                   const Divider(height: 24),
 
                   if (txn != null) ...[
-                    _ReceiptLine(label: 'Transaction ID', value: txn!.transactionId, mono: true),
-                    _ReceiptLine(label: 'Reference',     value: txn!.referenceNumber, mono: true),
+                    _ReceiptLine(
+                      label: 'Transaction ID',
+                      value: txn!.transactionId,
+                      mono: true,
+                    ),
+                    _ReceiptLine(
+                      label: 'Reference',
+                      value: txn!.referenceNumber,
+                      mono: true,
+                    ),
                     if (txn!.fromAccountNumber != null)
-                      _ReceiptLine(label: 'From', value: _mask(txn!.fromAccountNumber!)),
+                      _ReceiptLine(
+                        label: 'From',
+                        value: _mask(txn!.fromAccountNumber!),
+                      ),
                     if (txn!.toAccountNumber != null)
-                      _ReceiptLine(label: 'To',   value: _mask(txn!.toAccountNumber!)),
-                    _ReceiptLine(label: 'Mode', value: txn!.transferMode.displayName),
+                      _ReceiptLine(
+                        label: 'To',
+                        value: _mask(txn!.toAccountNumber!),
+                      ),
+                    _ReceiptLine(
+                      label: 'Mode',
+                      value: txn!.transferMode.displayName,
+                    ),
                     const Divider(height: 20),
                     _ReceiptLine(label: 'Amount', value: fmt(txn!.amount)),
                     _ReceiptLine(
@@ -1048,7 +1171,11 @@ class _SuccessView extends StatelessWidget {
                     ),
                     if (tax > 0)
                       _ReceiptLine(label: 'Tax (18%)', value: fmt(tax)),
-                    _ReceiptLine(label: 'Total Debited', value: fmt(totalDebit), isTotal: true),
+                    _ReceiptLine(
+                      label: 'Total Debited',
+                      value: fmt(totalDebit),
+                      isTotal: true,
+                    ),
                     const Divider(height: 20),
                     _ReceiptLine(
                       label: 'Status',
@@ -1058,10 +1185,16 @@ class _SuccessView extends StatelessWidget {
                     if (txn!.timestamp != null)
                       _ReceiptLine(
                         label: 'Date & Time',
-                        value: DateFormat('dd MMM yyyy, hh:mm a').format(txn!.timestamp!),
+                        value: DateFormat(
+                          'dd MMM yyyy, hh:mm a',
+                        ).format(txn!.timestamp!),
                       ),
                     if (txn!.receiptNumber != null)
-                      _ReceiptLine(label: 'Receipt #', value: txn!.receiptNumber!, mono: true),
+                      _ReceiptLine(
+                        label: 'Receipt #',
+                        value: txn!.receiptNumber!,
+                        mono: true,
+                      ),
                   ] else
                     const Padding(
                       padding: EdgeInsets.all(12),
@@ -1097,11 +1230,10 @@ class _SuccessView extends StatelessWidget {
   }
 }
 
-
 class _BottomBar extends StatelessWidget {
-  final int          currentStep;
-  final bool         isLoading;
-  final String       nextLabel;
+  final int currentStep;
+  final bool isLoading;
+  final String nextLabel;
   final VoidCallback onNext;
   final VoidCallback onBack;
 
@@ -1119,7 +1251,9 @@ class _BottomBar extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        20, 12, 20,
+        20,
+        12,
+        20,
         MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: BoxDecoration(
@@ -1134,7 +1268,9 @@ class _BottomBar extends StatelessWidget {
             label: Text(currentStep == 0 ? 'Cancel' : 'Back'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1143,14 +1279,20 @@ class _BottomBar extends StatelessWidget {
               onPressed: isLoading ? null : onNext,
               icon: isLoading
                   ? const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.arrow_forward_rounded, size: 18),
               label: Text(nextLabel),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -1160,39 +1302,40 @@ class _BottomBar extends StatelessWidget {
   }
 }
 
-
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
-  final String   label;
+  final String label;
   const _SectionHeader({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
-    return Row(children: [
-      Icon(icon, size: 15, color: cs.primary),
-      const SizedBox(width: 6),
-      Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: cs.primary,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
+    final cs = theme.colorScheme;
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: cs.primary),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: cs.primary,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 }
 
 class _InlineAlert extends StatelessWidget {
   final String message;
-  final bool   isError;
+  final bool isError;
   const _InlineAlert({required this.message, this.isError = false});
 
   @override
   Widget build(BuildContext context) {
-    final cs    = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final color = isError ? cs.error : Colors.orange[800]!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1201,16 +1344,22 @@ class _InlineAlert extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Row(children: [
-        Icon(Icons.warning_amber_rounded, size: 15, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            message,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 15, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -1227,24 +1376,34 @@ class _ModeOption extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-        Text(sub,   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          sub,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
 }
 
 class _SummaryLine extends StatelessWidget {
-  final String    label;
-  final String    value;
+  final String label;
+  final String value;
   final ThemeData theme;
-  final bool      isTotal;
-  final bool      highlight;
+  final bool isTotal;
+  final bool highlight;
   const _SummaryLine({
     required this.label,
     required this.value,
     required this.theme,
-    this.isTotal   = false,
+    this.isTotal = false,
     this.highlight = false,
   });
 
@@ -1265,7 +1424,7 @@ class _SummaryLine extends StatelessWidget {
           value,
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-            fontSize:   isTotal ? 14 : null,
+            fontSize: isTotal ? 14 : null,
             color: highlight ? const Color(0xFF2E7D32) : cs.onSurface,
           ),
         ),
@@ -1275,21 +1434,21 @@ class _SummaryLine extends StatelessWidget {
 }
 
 class _ConfirmRow extends StatelessWidget {
-  final String  label;
-  final String  value;
-  final bool    isTotal;
-  final Color?  valueColor;
+  final String label;
+  final String value;
+  final bool isTotal;
+  final Color? valueColor;
   const _ConfirmRow({
     required this.label,
     required this.value,
-    this.isTotal    = false,
+    this.isTotal = false,
     this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
+    final cs = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1297,9 +1456,12 @@ class _ConfirmRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 110,
-            child: Text(label,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
           ),
           Expanded(
             child: Text(
@@ -1307,7 +1469,7 @@ class _ConfirmRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-                fontSize:   isTotal ? 14 : null,
+                fontSize: isTotal ? 14 : null,
                 color: valueColor ?? cs.onSurface,
               ),
             ),
@@ -1319,23 +1481,23 @@ class _ConfirmRow extends StatelessWidget {
 }
 
 class _ReceiptLine extends StatelessWidget {
-  final String  label;
-  final String  value;
-  final bool    isTotal;
-  final bool    mono;
-  final Color?  valueColor;
+  final String label;
+  final String value;
+  final bool isTotal;
+  final bool mono;
+  final Color? valueColor;
   const _ReceiptLine({
     required this.label,
     required this.value,
-    this.isTotal    = false,
-    this.mono       = false,
+    this.isTotal = false,
+    this.mono = false,
     this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs    = theme.colorScheme;
+    final cs = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1343,9 +1505,12 @@ class _ReceiptLine extends StatelessWidget {
         children: [
           SizedBox(
             width: 110,
-            child: Text(label,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
           ),
           Expanded(
             child: Text(
@@ -1353,7 +1518,7 @@ class _ReceiptLine extends StatelessWidget {
               textAlign: TextAlign.right,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-                fontSize:   isTotal ? 14 : null,
+                fontSize: isTotal ? 14 : null,
                 fontFamily: mono ? 'monospace' : null,
                 color: valueColor ?? cs.onSurface,
               ),

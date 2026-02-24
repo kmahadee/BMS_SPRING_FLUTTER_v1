@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:vantedge/features/auth/domain/entities/user_role.dart';
 import 'package:vantedge/shared/providers/badge_count_provider.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
-import '../../../features/auth/domain/entities/user_entity.dart';
 import '../../../core/routes/app_routes.dart';
 
 class NavItem {

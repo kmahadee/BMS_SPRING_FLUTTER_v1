@@ -8,7 +8,7 @@ import '../../../accounts/presentation/providers/account_provider.dart';
 import '../../../branches/presentation/providers/branch_provider.dart';
 
 /// Provider for managing dashboard state and role-based content
-/// 
+///
 /// This provider coordinates with [AccountProvider] and [BranchProvider]
 /// to aggregate data for the dashboard. It provides role-specific content
 /// and quick actions based on the user's role.
@@ -31,10 +31,10 @@ class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
     AccountProvider? accountProvider,
     BranchProvider? branchProvider,
-  })  : _accountProvider = accountProvider,
-        _branchProvider = branchProvider {
+  }) : _accountProvider = accountProvider,
+       _branchProvider = branchProvider {
     _logger.i('DashboardProvider initialized');
-    
+
     // Listen to dependent providers
     _accountProvider?.addListener(_onAccountProviderUpdate);
     _branchProvider?.addListener(_onBranchProviderUpdate);
@@ -75,18 +75,21 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   /// Loads the dashboard based on user role
-  /// 
+  ///
   /// [role] The current user's role
-  Future<void> loadDashboard(UserRole role) async {
+  // Future<void> loadDashboard(UserRole role) async {
+  Future<void> loadDashboard(UserRole role, {String? customerId}) async {
     try {
       _currentUserRole = role;
+      _currentCustomerId = customerId;
       _setLoading(true);
       _clearError();
 
       _logger.i('Loading dashboard for role: ${role.name}');
 
       // Load role-specific data
-      await _loadRoleSpecificData(role);
+      // await _loadRoleSpecificData(role);
+      await _loadRoleSpecificData(role, customerId: customerId);
 
       // Build dashboard summary
       await _buildDashboardSummary();
@@ -118,13 +121,20 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   /// Refreshes the current dashboard
+  // Future<void> refreshDashboard() async {
+  //   _logger.i('Refreshing dashboard');
+  //   await loadDashboard(_currentUserRole);
+  // }
+
+  String? _currentCustomerId;
+
   Future<void> refreshDashboard() async {
     _logger.i('Refreshing dashboard');
-    await loadDashboard(_currentUserRole);
+    await loadDashboard(_currentUserRole, customerId: _currentCustomerId);
   }
 
   /// Returns quick actions specific to the user's role
-  /// 
+  ///
   /// [role] The user role to get actions for
   List<QuickActionModel> getQuickActionsForRole(UserRole role) {
     _logger.d('Getting quick actions for role: ${role.name}');
@@ -147,10 +157,15 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   /// Loads role-specific data from appropriate providers
-  Future<void> _loadRoleSpecificData(UserRole role) async {
+  // Future<void> _loadRoleSpecificData(UserRole role) async {
+  Future<void> _loadRoleSpecificData(
+    UserRole role, {
+    String? customerId,
+  }) async {
     switch (role) {
       case UserRole.customer:
-        await _loadCustomerData();
+        // await _loadCustomerData();
+        await _loadCustomerData(customerId: customerId);
         break;
       case UserRole.branchManager:
         await _loadBranchManagerData();
@@ -162,7 +177,8 @@ class DashboardProvider extends ChangeNotifier {
         await _loadCardOfficerData();
         break;
       case UserRole.admin:
-        await _loadAdminData();
+        // await _loadAdminData();
+        await _loadAdminData(customerId: customerId);
         break;
       default:
         _logger.w('Unknown role, loading default customer data');
@@ -171,12 +187,18 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   /// Loads customer-specific dashboard data
-  Future<void> _loadCustomerData() async {
+  Future<void> _loadCustomerData({String? customerId}) async {
     _logger.d('Loading customer dashboard data');
 
     // Fetch accounts if not already loaded
-    if (_accountProvider != null && !_accountProvider.hasAccounts) {
-      await _accountProvider.fetchMyAccounts();
+    // if (_accountProvider != null && !_accountProvider.hasAccounts) {
+    //   await _accountProvider.fetchMyAccounts();
+    // }
+    // Fetch accounts if not already loaded
+    if (_accountProvider != null &&
+        !_accountProvider.hasAccounts &&
+        customerId != null) {
+      await _accountProvider.fetchMyAccounts(customerId);
     }
 
     // Build customer-specific data
@@ -217,14 +239,14 @@ class DashboardProvider extends ChangeNotifier {
   /// Loads loan officer dashboard data
   Future<void> _loadLoanOfficerData() async {
     _logger.d('Loading loan officer dashboard data');
-    
+
     // TODO: Implement when loan repository is available
     // This would fetch:
     // - Pending loan applications
     // - Approved loans awaiting disbursement
     // - Loan portfolio summary
     // - Approval queue
-    
+
     _roleSpecificData = {
       'pendingApplications': 0,
       'approvedLoans': 0,
@@ -237,14 +259,14 @@ class DashboardProvider extends ChangeNotifier {
   /// Loads card officer dashboard data
   Future<void> _loadCardOfficerData() async {
     _logger.d('Loading card officer dashboard data');
-    
+
     // TODO: Implement when card repository is available
     // This would fetch:
     // - Pending card applications
     // - Active cards
     // - Blocked cards
     // - Card issuance queue
-    
+
     _roleSpecificData = {
       'pendingApplications': 0,
       'activeCards': 0,
@@ -254,21 +276,25 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   /// Loads admin dashboard data
-  Future<void> _loadAdminData() async {
+  Future<void> _loadAdminData({String? customerId}) async {
     _logger.d('Loading admin dashboard data');
-    
+
     // Load data from all providers
-    if (_accountProvider != null && !_accountProvider.hasAccounts) {
-      await _accountProvider.fetchMyAccounts();
+    // if (_accountProvider != null && !_accountProvider.hasAccounts) {
+    //   await _accountProvider.fetchMyAccounts();
+    // }
+    if (_accountProvider != null &&
+        !_accountProvider.hasAccounts &&
+        customerId != null) {
+      await _accountProvider.fetchMyAccounts(customerId);
     }
-    
     if (_branchProvider != null && !_branchProvider.hasBranches) {
       await _branchProvider.fetchAllBranches();
     }
-    
+
     // TODO: Fetch bank-wide statistics when available
     // await _branchProvider?.fetchBankStatistics();
-    
+
     _roleSpecificData = {
       'totalBranches': _branchProvider?.branches.length ?? 0,
       'totalAccounts': _accountProvider?.accounts.length ?? 0,
@@ -285,19 +311,23 @@ class DashboardProvider extends ChangeNotifier {
     // Create accounts summary
     final accountsSummary = AccountsSummary(
       totalAccounts: _accountProvider?.accounts.length ?? 0,
-      savingsAccounts: _accountProvider?.accounts
+      savingsAccounts:
+          _accountProvider?.accounts
               .where((a) => a.accountType.value == 'SAVINGS')
               .length ??
           0,
-      currentAccounts: _accountProvider?.accounts
+      currentAccounts:
+          _accountProvider?.accounts
               .where((a) => a.accountType.value == 'CURRENT')
               .length ??
           0,
-      salaryAccounts: _accountProvider?.accounts
+      salaryAccounts:
+          _accountProvider?.accounts
               .where((a) => a.accountType.value == 'SALARY')
               .length ??
           0,
-      fdAccounts: _accountProvider?.accounts
+      fdAccounts:
+          _accountProvider?.accounts
               .where((a) => a.accountType.value == 'FD')
               .length ??
           0,
@@ -333,21 +363,24 @@ class DashboardProvider extends ChangeNotifier {
     final List<AlertItem> alerts = [];
 
     // Check for inactive accounts
-    final inactiveAccounts = _accountProvider?.accounts
-        .where((a) => !a.status.canTransact)
-        .length ?? 0;
-    
+    final inactiveAccounts =
+        _accountProvider?.accounts.where((a) => !a.status.canTransact).length ??
+        0;
+
     if (inactiveAccounts > 0) {
-      alerts.add(AlertItem(
-        id: 'inactive_accounts',
-        title: 'Inactive Accounts',
-        message: 'You have $inactiveAccounts inactive account(s). Please contact support.',
-        type: 'WARNING',
-        priority: 'MEDIUM',
-        createdDate: DateTime.now(),
-        actionRoute: '/accounts',
-        actionLabel: 'View Accounts',
-      ));
+      alerts.add(
+        AlertItem(
+          id: 'inactive_accounts',
+          title: 'Inactive Accounts',
+          message:
+              'You have $inactiveAccounts inactive account(s). Please contact support.',
+          type: 'WARNING',
+          priority: 'MEDIUM',
+          createdDate: DateTime.now(),
+          actionRoute: '/accounts',
+          actionLabel: 'View Accounts',
+        ),
+      );
     }
 
     // Add role-specific alerts
@@ -355,16 +388,19 @@ class DashboardProvider extends ChangeNotifier {
       if (_branchProvider?.branchStats != null) {
         final stats = _branchProvider!.branchStats!;
         if (stats.pendingApprovals != null && stats.pendingApprovals! > 0) {
-          alerts.add(AlertItem(
-            id: 'pending_approvals',
-            title: 'Pending Approvals',
-            message: 'You have ${stats.pendingApprovals} pending approval(s).',
-            type: 'INFO',
-            priority: 'HIGH',
-            createdDate: DateTime.now(),
-            actionRoute: '/approvals',
-            actionLabel: 'Review',
-          ));
+          alerts.add(
+            AlertItem(
+              id: 'pending_approvals',
+              title: 'Pending Approvals',
+              message:
+                  'You have ${stats.pendingApprovals} pending approval(s).',
+              type: 'INFO',
+              priority: 'HIGH',
+              createdDate: DateTime.now(),
+              actionRoute: '/approvals',
+              actionLabel: 'Review',
+            ),
+          );
         }
       }
     }
@@ -387,7 +423,8 @@ class DashboardProvider extends ChangeNotifier {
 
   /// Handler for account provider updates
   void _onAccountProviderUpdate() {
-    if (_currentUserRole == UserRole.customer || _currentUserRole == UserRole.admin) {
+    if (_currentUserRole == UserRole.customer ||
+        _currentUserRole == UserRole.admin) {
       _logger.d('Account provider updated, refreshing dashboard data');
       _buildDashboardSummary();
     }
@@ -395,7 +432,8 @@ class DashboardProvider extends ChangeNotifier {
 
   /// Handler for branch provider updates
   void _onBranchProviderUpdate() {
-    if (_currentUserRole == UserRole.branchManager || _currentUserRole == UserRole.admin) {
+    if (_currentUserRole == UserRole.branchManager ||
+        _currentUserRole == UserRole.admin) {
       _logger.d('Branch provider updated, refreshing dashboard data');
       _buildDashboardSummary();
     }

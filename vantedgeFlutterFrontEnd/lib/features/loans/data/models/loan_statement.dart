@@ -156,5 +156,5 @@ class LoanStatementModel {
   @override
   String toString() =>
       'LoanStatementModel(loanId: $loanId, type: ${loanType.displayName}, '
-      'paid: $installmentsPaid/${totalInstallments}, outstanding: $outstandingBalance)';
+      'paid: $installmentsPaid/$totalInstallments, outstanding: $outstandingBalance)';
 }

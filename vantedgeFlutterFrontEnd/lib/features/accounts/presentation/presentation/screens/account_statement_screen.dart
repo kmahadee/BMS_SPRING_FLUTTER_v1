@@ -4,14 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
 import '../../../data/models/account_statement_dto.dart';
 import '../../../data/models/transaction_dto.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class AccountStatementScreen extends StatefulWidget {
   final String accountNumber;
 
-  const AccountStatementScreen({
-    super.key,
-    required this.accountNumber,
-  });
+  const AccountStatementScreen({super.key, required this.accountNumber});
 
   @override
   State<AccountStatementScreen> createState() => _AccountStatementScreenState();
@@ -20,21 +20,28 @@ class AccountStatementScreen extends StatefulWidget {
 class _AccountStatementScreenState extends State<AccountStatementScreen> {
   DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _toDate = DateTime.now();
-  
+
   final TextEditingController _searchController = TextEditingController();
   final String _searchQuery = '';
-  
+
   _TransactionFilter _filter = _TransactionFilter.all;
   double? _minAmount;
   double? _maxAmount;
-  
+
   final int _itemsPerPage = 20;
   int _currentPage = 1;
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _generateStatement();
+  // }
   @override
   void initState() {
     super.initState();
-    _generateStatement();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _generateStatement();
+    });
   }
 
   @override
@@ -59,9 +66,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
       initialDateRange: DateTimeRange(start: _fromDate, end: _toDate),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme,
-          ),
+          data: Theme.of(
+            context,
+          ).copyWith(colorScheme: Theme.of(context).colorScheme),
           child: child!,
         );
       },
@@ -104,9 +111,14 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
 
     if (_searchQuery.isNotEmpty) {
       transactions = transactions.where((txn) {
-        return txn.transactionReference?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+        return txn.transactionReference?.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ??
             false ||
-            txn.description!.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+                txn.description!.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+            false;
       }).toList();
     }
 
@@ -122,21 +134,27 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     }
 
     if (_minAmount != null) {
-      transactions = transactions.where((t) => t.amount >= _minAmount!).toList();
+      transactions = transactions
+          .where((t) => t.amount >= _minAmount!)
+          .toList();
     }
     if (_maxAmount != null) {
-      transactions = transactions.where((t) => t.amount <= _maxAmount!).toList();
+      transactions = transactions
+          .where((t) => t.amount <= _maxAmount!)
+          .toList();
     }
 
     return transactions;
   }
 
-  List<TransactionDTO> _getPaginatedTransactions(List<TransactionDTO> transactions) {
+  List<TransactionDTO> _getPaginatedTransactions(
+    List<TransactionDTO> transactions,
+  ) {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
-    
+
     if (startIndex >= transactions.length) return [];
-    
+
     return transactions.sublist(
       startIndex,
       endIndex > transactions.length ? transactions.length : endIndex,
@@ -158,24 +176,192 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     );
   }
 
-  void _handleExport(_ExportOption option) {
-    String message;
-    switch (option) {
-      case _ExportOption.pdf:
-        message = 'Generating PDF...';
-        break;
-      case _ExportOption.email:
-        message = 'Sending via email...';
-        break;
-      case _ExportOption.print:
-        message = 'Preparing to print...';
-        break;
-    }
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$message Feature coming soon')),
+  // void _handleExport(_ExportOption option) {
+  //   String message;
+  //   switch (option) {
+  //     case _ExportOption.pdf:
+  //       message = 'Generating PDF...';
+  //       break;
+  //     case _ExportOption.email:
+  //       message = 'Sending via email...';
+  //       break;
+  //     case _ExportOption.print:
+  //       message = 'Preparing to print...';
+  //       break;
+  //   }
+
+  //   ScaffoldMessenger.of(
+  //     context,
+  //   ).showSnackBar(SnackBar(content: Text('$message Feature coming soon')));
+  // }
+
+Future<void> _handleExport(_ExportOption option) async {
+  final statement = context.read<AccountProvider>().currentStatement;
+  if (statement == null) return;
+
+  switch (option) {
+    case _ExportOption.pdf:
+      await _generatePdf(statement);
+      break;
+    case _ExportOption.email:
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email feature coming soon')),
+      );
+      break;
+    case _ExportOption.print:
+      await _generatePdf(statement, print: true);
+      break;
+  }
+}
+
+Future<void> _generatePdf(AccountStatementDTO statement, {bool print = false}) async {
+  final pdf = pw.Document();
+
+  pdf.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (pw.Context context) => [
+        // Header
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Account Statement',
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Account: ${statement.accountNumber}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                if (statement.accountHolderName != null)
+                  pw.Text(
+                    'Name: ${statement.accountHolderName}',
+                    style: const pw.TextStyle(fontSize: 12),
+                  ),
+                if (statement.branchName != null)
+                  pw.Text(
+                    'Branch: ${statement.branchName}',
+                    style: const pw.TextStyle(fontSize: 12),
+                  ),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text(
+                  'Period',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text(
+                  '${DateFormat('MMM dd, yyyy').format(statement.fromDate)} -',
+                  style: const pw.TextStyle(fontSize: 11),
+                ),
+                pw.Text(
+                  DateFormat('MMM dd, yyyy').format(statement.toDate),
+                  style: const pw.TextStyle(fontSize: 11),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Generated: ${DateFormat('MMM dd, yyyy').format(DateTime.now())}',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        pw.Divider(thickness: 1),
+        pw.SizedBox(height: 8),
+
+        // Summary
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.grey100,
+            borderRadius: pw.BorderRadius.circular(8),
+          ),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+            children: [
+              _pdfSummaryItem('Opening Balance', statement.openingBalance),
+              _pdfSummaryItem('Closing Balance', statement.closingBalance),
+              _pdfSummaryItem('Total Credits', statement.totalCredits),
+              _pdfSummaryItem('Total Debits', statement.totalDebits),
+            ],
+          ),
+        ),
+
+        pw.SizedBox(height: 16),
+
+        // Table header
+        pw.Text(
+          'Transactions (${statement.transactions.length})',
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 8),
+
+        pw.TableHelper.fromTextArray(
+          headers: ['Date', 'Reference', 'Description', 'Type', 'Amount', 'Balance'],
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellAlignments: {
+            0: pw.Alignment.centerLeft,
+            1: pw.Alignment.centerLeft,
+            2: pw.Alignment.centerLeft,
+            3: pw.Alignment.center,
+            4: pw.Alignment.centerRight,
+            5: pw.Alignment.centerRight,
+          },
+          data: statement.sortedTransactions.map((txn) {
+            return [
+              DateFormat('dd/MM/yy HH:mm').format(txn.transactionDate),
+              txn.transactionReference ?? '-',
+              txn.description ?? '-',
+              txn.displayType,
+              '${txn.isCredit ? '+' : '-'}${NumberFormat('#,##0.00').format(txn.amount)}',
+              txn.balanceAfter != null
+                  ? NumberFormat('#,##0.00').format(txn.balanceAfter)
+                  : '-',
+            ];
+          }).toList(),
+        ),
+      ],
+    ),
+  );
+
+  if (print) {
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  } else {
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'statement_${statement.accountNumber}_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
     );
   }
+}
+
+pw.Widget _pdfSummaryItem(String label, double amount) {
+  return pw.Column(
+    children: [
+      pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+      pw.SizedBox(height: 4),
+      pw.Text(
+        NumberFormat('#,##0.00').format(amount),
+        style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+      ),
+    ],
+  );
+}
 
   void _showFilterOptions() {
     showModalBottomSheet(
@@ -202,7 +388,10 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return NumberFormat.currency(symbol: 'BDT', decimalDigits: 2).format(amount);
+    return NumberFormat.currency(
+      symbol: 'BDT',
+      decimalDigits: 2,
+    ).format(amount);
   }
 
   String _formatDate(DateTime date) {
@@ -224,7 +413,12 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               showSearch(
                 context: context,
                 delegate: _TransactionSearchDelegate(
-                  transactions: context.read<AccountProvider>().currentStatement?.transactions ?? [],
+                  transactions:
+                      context
+                          .read<AccountProvider>()
+                          .currentStatement
+                          ?.transactions ??
+                      [],
                 ),
               );
             },
@@ -232,7 +426,10 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           ),
           IconButton(
             icon: Badge(
-              isLabelVisible: _filter != _TransactionFilter.all || _minAmount != null || _maxAmount != null,
+              isLabelVisible:
+                  _filter != _TransactionFilter.all ||
+                  _minAmount != null ||
+                  _maxAmount != null,
               child: const Icon(Icons.filter_list),
             ),
             onPressed: _showFilterOptions,
@@ -258,7 +455,11 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 80, color: colorScheme.error),
+                    Icon(
+                      Icons.error_outline,
+                      size: 80,
+                      color: colorScheme.error,
+                    ),
                     const SizedBox(height: 24),
                     Text(
                       provider.errorMessage ?? 'Failed to generate statement',
@@ -283,8 +484,11 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           }
 
           final filteredTransactions = _getFilteredTransactions(statement);
-          final paginatedTransactions = _getPaginatedTransactions(filteredTransactions);
-          final totalPages = (filteredTransactions.length / _itemsPerPage).ceil();
+          final paginatedTransactions = _getPaginatedTransactions(
+            filteredTransactions,
+          );
+          final totalPages = (filteredTransactions.length / _itemsPerPage)
+              .ceil();
 
           return Column(
             children: [
@@ -315,15 +519,18 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       children: [
                         _DatePresetChip(
                           label: 'Last 7 Days',
-                          onPressed: () => _setDatePreset(_DatePreset.last7Days),
+                          onPressed: () =>
+                              _setDatePreset(_DatePreset.last7Days),
                         ),
                         _DatePresetChip(
                           label: 'Last 30 Days',
-                          onPressed: () => _setDatePreset(_DatePreset.last30Days),
+                          onPressed: () =>
+                              _setDatePreset(_DatePreset.last30Days),
                         ),
                         _DatePresetChip(
                           label: 'Last 3 Months',
-                          onPressed: () => _setDatePreset(_DatePreset.last3Months),
+                          onPressed: () =>
+                              _setDatePreset(_DatePreset.last3Months),
                         ),
                       ],
                     ),
@@ -379,7 +586,10 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -420,7 +630,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: paginatedTransactions.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final transaction = paginatedTransactions[index];
                           return _TransactionTile(transaction: transaction);
@@ -481,17 +692,11 @@ class _DatePresetChip extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
 
-  const _DatePresetChip({
-    required this.label,
-    required this.onPressed,
-  });
+  const _DatePresetChip({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      onPressed: onPressed,
-    );
+    return ActionChip(label: Text(label), onPressed: onPressed);
   }
 }
 
@@ -586,7 +791,9 @@ class _TransactionTile extends StatelessWidget {
             ),
           const SizedBox(height: 2),
           Text(
-            DateFormat('MMM dd, yyyy • hh:mm a').format(transaction.transactionDate),
+            DateFormat(
+              'MMM dd, yyyy • hh:mm a',
+            ).format(transaction.transactionDate),
             style: theme.textTheme.bodySmall,
           ),
           if (transaction.transactionReference != null)
@@ -711,7 +918,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            Text('Transaction Type', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Transaction Type',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -808,10 +1018,7 @@ class _TransactionSearchDelegate extends SearchDelegate<TransactionDTO?> {
   @override
   List<Widget> buildActions(BuildContext context) {
     return [
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () => query = '',
-      ),
+      IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
     ];
   }
 
@@ -835,9 +1042,12 @@ class _TransactionSearchDelegate extends SearchDelegate<TransactionDTO?> {
 
   Widget _buildSearchResults() {
     final results = transactions.where((txn) {
-      return txn.transactionReference?.toLowerCase().contains(query.toLowerCase()) ?? false ||
-          txn.description!.toLowerCase().contains(query.toLowerCase()) ?? false ||
-          txn.displayType.toLowerCase().contains(query.toLowerCase());
+      return txn.transactionReference?.toLowerCase().contains(
+            query.toLowerCase(),
+          ) ??
+          false ||
+              txn.description!.toLowerCase().contains(query.toLowerCase()) ??
+          false || txn.displayType.toLowerCase().contains(query.toLowerCase());
     }).toList();
 
     if (results.isEmpty) {

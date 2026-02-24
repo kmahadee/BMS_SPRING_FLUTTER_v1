@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 
 import 'package:vantedge/core/routes/app_routes.dart';
 import 'package:vantedge/features/accounts/presentation/providers/account_provider.dart';
+import 'package:vantedge/features/auth/presentation/providers/auth_provider.dart';
 import 'package:vantedge/features/transactions/data/models/account_balance_model.dart';
 import 'package:vantedge/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:vantedge/shared/widgets/custom_app_bar.dart';
-
 
 class TransactionHomeScreen extends StatefulWidget {
   const TransactionHomeScreen({super.key});
@@ -23,11 +23,30 @@ class _TransactionHomeScreenState extends State<TransactionHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
+  // Future<void> _init() async {
+  //   final ap = context.read<AccountProvider>();
+
+  //   if (ap.accounts.isEmpty) {
+  //     await ap.fetchMyAccounts();
+  //   }
+
+  //   if (!mounted) return;
+
+  //   final accounts = context.read<AccountProvider>().accounts;
+  //   if (accounts.isEmpty) return;
+
+  //   final primaryNumber = accounts.first.accountNumber;
+  //   await context.read<TransactionProvider>().loadBalance(primaryNumber);
+  // }
+
   Future<void> _init() async {
     final ap = context.read<AccountProvider>();
 
     if (ap.accounts.isEmpty) {
-      await ap.fetchMyAccounts();
+      final customerId = context.read<AuthProvider>().user?.customerId;
+      if (customerId != null) {
+        await ap.fetchMyAccounts(customerId);
+      }
     }
 
     if (!mounted) return;
@@ -80,7 +99,7 @@ class _TransactionHomeScreenState extends State<TransactionHomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.55,
+                childAspectRatio: 1.19,
                 children: [
                   _ActionCard(
                     icon: Icons.swap_horiz_rounded,
@@ -125,7 +144,6 @@ class _TransactionHomeScreenState extends State<TransactionHomeScreen> {
     );
   }
 }
-
 
 class _BalanceCard extends StatefulWidget {
   final VoidCallback onViewAccounts;
@@ -294,8 +312,11 @@ class _BalanceCardState extends State<_BalanceCard> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.arrow_forward_rounded,
-                            size: 14, color: Colors.white70),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: Colors.white70,
+                        ),
                       ],
                     ),
                   ),
@@ -367,7 +388,6 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
-
 
 class _ActionCard extends StatelessWidget {
   final IconData icon;
@@ -453,7 +473,6 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-
 class _RecentSection extends StatelessWidget {
   final VoidCallback onViewAll;
 
@@ -493,8 +512,11 @@ class _RecentSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_rounded,
-                      size: 14, color: cs.primary),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 14,
+                    color: cs.primary,
+                  ),
                 ],
               ),
             ),
@@ -511,8 +533,7 @@ class _RecentSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(14),
-              border:
-                  Border.all(color: cs.outlineVariant.withOpacity(0.5)),
+              border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
             ),
             child: Column(
               children: [
@@ -536,7 +557,9 @@ class _RecentSection extends StatelessWidget {
                   label: const Text('Open History'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

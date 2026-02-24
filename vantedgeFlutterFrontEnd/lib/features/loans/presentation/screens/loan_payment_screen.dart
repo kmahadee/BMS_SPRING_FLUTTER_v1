@@ -417,7 +417,7 @@ class _LoanPaymentScreenState extends State<LoanPaymentScreen> {
                 _FLabel('Payment Mode', theme, cs),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<_PaymentMode>(
-                  value: _mode,
+                  initialValue: _mode,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),

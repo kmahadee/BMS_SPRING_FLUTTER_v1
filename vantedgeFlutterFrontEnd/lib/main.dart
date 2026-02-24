@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vantedge/features/auth/domain/usecases/CheckAuthStatusUseCase.dart';
 import 'package:vantedge/features/auth/domain/usecases/ValidateTokenUseCase.dart';
 import 'package:vantedge/features/customer/domain/repositories/customer_repository_impl.dart';
+import 'package:vantedge/features/dps/data/models/dps_repository.dart';
 import 'package:vantedge/features/transactions/data/repositories/transaction_repository_impl.dart';
 import 'package:vantedge/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:vantedge/shared/providers/badge_count_provider.dart';
@@ -38,6 +39,10 @@ import 'features/accounts/data/repositories/account_repository_impl.dart';
 
 import 'core/storage/secure_storage_service.dart';
 import 'core/api/interceptors/dio_client.dart';
+
+//---------------dps-----------------
+import 'package:vantedge/features/dps/presentation/providers/dps_provider.dart';
+import 'package:vantedge/core/di/service_locator.dart';
 
 void main() async {
   print('🚀 [MAIN] Application starting...');
@@ -101,7 +106,7 @@ class _MyAppState extends State<MyApp> {
     print('  📦 Initializing DioClient');
     final dioClient = DioClient();
     dioClient.initialize();
-    print('  ✅ DioClient ready: ${dioClient.dio?.options.baseUrl}');
+    print('  ✅ DioClient ready: ${dioClient.dio.options.baseUrl}');
 
     final secureStorage = SecureStorageService();
     print('  ✅ SecureStorageService ready');
@@ -114,25 +119,28 @@ class _MyAppState extends State<MyApp> {
     final customerRepository = CustomerRepositoryImpl(dioClient: dioClient);
     final branchRepository = BranchRepositoryImpl(dioClient: dioClient);
     final accountRepository = AccountRepositoryImpl(dioClient: dioClient);
-    final transactionRepository =
-        TransactionRepositoryImpl(dioClient: dioClient);
+    final transactionRepository = TransactionRepositoryImpl(
+      dioClient: dioClient,
+    );
 
     // ── Loan repository — single instance shared by both loan providers ───
     print('  📦 Building LoanRepository');
     final loanRepository = LoanRepositoryImpl(dioClient: dioClient);
     print('  ✅ LoanRepository ready');
     // ─────────────────────────────────────────────────────────────────────
-
+    // ─────────────────────DPS REPO──────────────────────────────────────────
+    final dpsRepository = DpsRepository(dioClient: dioClient);
+    print('  ✅ DpsRepository ready');
     // ── Use-cases ─────────────────────────────────────────────────────────
     final loginUseCase = LoginUseCase(
       repository: authRepository,
       storageService: secureStorage,
     );
     final registerUseCase = RegisterUseCase(repository: authRepository);
-    final registerUserUseCase =
-        RegisterUserUseCase(repository: authRepository);
-    final createCustomerUseCase =
-        CreateCustomerUseCase(repository: customerRepository);
+    final registerUserUseCase = RegisterUserUseCase(repository: authRepository);
+    final createCustomerUseCase = CreateCustomerUseCase(
+      repository: customerRepository,
+    );
     final logoutUseCase = LogoutUseCase(
       repository: authRepository,
       storageService: secureStorage,
@@ -145,8 +153,9 @@ class _MyAppState extends State<MyApp> {
       repository: authRepository,
       storageService: secureStorage,
     );
-    final checkAuthStatusUseCase =
-        CheckAuthStatusUseCase(repository: authRepository);
+    final checkAuthStatusUseCase = CheckAuthStatusUseCase(
+      repository: authRepository,
+    );
     print('  ✅ All use cases ready');
 
     // ── Provider list ─────────────────────────────────────────────────────
@@ -191,6 +200,22 @@ class _MyAppState extends State<MyApp> {
           return BadgeCountProvider(dioClient: dioClient);
         },
       ),
+
+      // ── DPS Provider ───────────────────────────────────────────────────
+      // ChangeNotifierProvider<DpsProvider>(
+      //   create: (_) {
+      //     print('    🔧 Creating DpsProvider via Service Locator');
+      //     return sl<DpsProvider>();
+      //   },
+      // ),
+
+      ChangeNotifierProvider<DpsProvider>(
+        create: (_) {
+          print('    🔧 Creating DpsProvider');
+          return DpsProvider(repository: dpsRepository);
+        },
+      ),
+
       // ── Loan providers ─────────────────────────────────────────────────
       ChangeNotifierProvider(
         create: (_) {
@@ -207,8 +232,7 @@ class _MyAppState extends State<MyApp> {
       // ───────────────────────────────────────────────────────────────────
     ];
 
-    print(
-        '  ✅ Provider list created with ${providers.length} providers');
+    print('  ✅ Provider list created with ${providers.length} providers');
     print('🏗️ [MyApp] _buildProviders completed');
     return providers;
   }
@@ -236,9 +260,7 @@ class _MyAppState extends State<MyApp> {
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
         navigatorKey: _navigatorKey,
-        routes: {
-          '/': (_) => const SizedBox.shrink(),
-        },
+        routes: {'/': (_) => const SizedBox.shrink()},
         onGenerateRoute: (settings) {
           print('📍 [Route] ${settings.name}');
           return AppRouter.generateRoute(settings);
@@ -262,20 +284,17 @@ class _MyAppState extends State<MyApp> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline,
-                    size: 64, color: Colors.red.shade700),
+                Icon(Icons.error_outline, size: 64, color: Colors.red.shade700),
                 const SizedBox(height: 24),
                 const Text(
                   'Oops! Something went wrong',
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'We\'re sorry for the inconvenience.\nPlease restart the app.',
-                  style: TextStyle(
-                      fontSize: 14, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -289,7 +308,9 @@ class _MyAppState extends State<MyApp> {
                         child: Text(
                           details.exception.toString(),
                           style: const TextStyle(
-                              fontSize: 12, fontFamily: 'monospace'),
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                          ),
                         ),
                       ),
                     ],

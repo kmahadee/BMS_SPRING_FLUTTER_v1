@@ -9,7 +9,6 @@ import 'package:vantedge/features/loans/data/models/loan_model.dart';
 import 'package:vantedge/features/loans/presentation/providers/loan_provider.dart';
 import 'package:vantedge/features/loans/presentation/widgets/loan_enum_display_helpers.dart';
 import 'package:vantedge/features/loans/presentation/widgets/loan_status_badge.dart';
-import 'package:vantedge/shared/widgets/custom_app_bar.dart';
 
 // ─── Placeholder route names (wire up in AppRouter when those screens exist) ──
 // AppRoutes.repaymentSchedule  → passes loanId as argument

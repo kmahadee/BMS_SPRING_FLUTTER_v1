@@ -18,7 +18,8 @@ abstract class AccountRepository {
   /// - [NetworkException] if there's a network connectivity issue
   /// - [TimeoutException] if the request times out
   /// - [ApiException] for other API errors
-  Future<List<AccountListItemDTO>> getMyAccounts();
+  // Future<List<AccountListItemDTO>> getMyAccounts();
+  Future<List<AccountListItemDTO>> getMyAccounts(String customerId);
 
   /// Retrieves detailed information for a specific account by account number
   /// 
@@ -82,7 +83,7 @@ abstract class AccountRepository {
   /// - [NetworkException] if there's a network connectivity issue
   /// - [TimeoutException] if the request times out
   /// - [ApiException] for other API errors
-  Future<List<AccountListItemDTO>> getAccountsByCustomerId(int customerId);
+  Future<List<AccountListItemDTO>> getAccountsByCustomerId(String customerId);
 
   /// Freezes an account to prevent transactions
   /// 

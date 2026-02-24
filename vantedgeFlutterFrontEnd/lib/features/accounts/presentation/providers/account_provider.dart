@@ -9,6 +9,7 @@ import '../../data/models/account_statement_dto.dart';
 import '../../data/repositories/account_repository.dart';
 import 'package:vantedge/features/accounts/data/domain/exceptions/account_inactive_exception.dart';
 import 'package:vantedge/features/accounts/data/domain/exceptions/account_not_found_exception.dart';
+
 class AccountProvider extends ChangeNotifier {
   final AccountRepository _repository;
   final Logger _logger = Logger();
@@ -27,9 +28,8 @@ class AccountProvider extends ChangeNotifier {
 
   final Set<String> _activeRequests = {};
 
-  AccountProvider({
-    required AccountRepository repository,
-  }) : _repository = repository {
+  AccountProvider({required AccountRepository repository})
+    : _repository = repository {
     _logger.i('AccountProvider initialized');
   }
 
@@ -49,16 +49,70 @@ class AccountProvider extends ChangeNotifier {
   }
 
   double get totalAvailableBalance {
-    return _accounts.fold(0.0, (sum, account) => sum + account.availableBalance);
+    return _accounts.fold(
+      0.0,
+      (sum, account) => sum + account.availableBalance,
+    );
   }
 
   int get activeAccountsCount {
     return _accounts.where((account) => account.status.canTransact).length;
   }
 
-  Future<void> fetchMyAccounts() async {
+  // Future<void> fetchMyAccounts() async {
+  //   final requestId = 'fetchMyAccounts';
+
+  //   if (_activeRequests.contains(requestId)) {
+  //     _logger.d('Request already in progress: $requestId');
+  //     return;
+  //   }
+
+  //   try {
+  //     _activeRequests.add(requestId);
+  //     _setLoading(true);
+  //     _clearError();
+
+  //     _logger.i('Fetching user accounts');
+
+  //     final accounts = await _repository.getMyAccounts();
+
+  //     _accounts = accounts;
+  //     _lastRefresh = DateTime.now();
+  //     _setLoading(false);
+
+  //     _logger.i('Fetched ${accounts.length} accounts successfully');
+
+  //     if (_autoRefreshEnabled) {
+  //       _startAutoRefresh();
+  //     }
+  //   } on NetworkException catch (e) {
+  //     _logger.e('Network error fetching accounts: ${e.message}');
+  //     _setError('No internet connection. Please check your network.');
+  //     _setLoading(false);
+  //   } on UnauthorizedException catch (e) {
+  //     _logger.e('Unauthorized error: ${e.message}');
+  //     _setError('Session expired. Please login again.');
+  //     _setLoading(false);
+  //   } on TimeoutException catch (e) {
+  //     _logger.e('Timeout error: ${e.message}');
+  //     _setError('Request timed out. Please try again.');
+  //     _setLoading(false);
+  //   } on ApiException catch (e) {
+  //     _logger.e('API error fetching accounts: ${e.message}');
+  //     _setError(e.message);
+  //     _setLoading(false);
+  //   } catch (e) {
+  //     _logger.e('Unexpected error fetching accounts: $e');
+  //     _setError('Failed to load accounts. Please try again.');
+  //     _setLoading(false);
+  //   } finally {
+  //     _activeRequests.remove(requestId);
+  //   }
+  // }
+
+  Future<void> fetchMyAccounts(String customerId) async {
     final requestId = 'fetchMyAccounts';
-    
+
     if (_activeRequests.contains(requestId)) {
       _logger.d('Request already in progress: $requestId');
       return;
@@ -71,7 +125,7 @@ class AccountProvider extends ChangeNotifier {
 
       _logger.i('Fetching user accounts');
 
-      final accounts = await _repository.getMyAccounts();
+      final accounts = await _repository.getMyAccounts(customerId);
 
       _accounts = accounts;
       _lastRefresh = DateTime.now();
@@ -109,7 +163,7 @@ class AccountProvider extends ChangeNotifier {
 
   Future<void> fetchAccountDetails(String accountNumber) async {
     final requestId = 'fetchAccountDetails_$accountNumber';
-    
+
     if (_activeRequests.contains(requestId)) {
       _logger.d('Request already in progress: $requestId');
       return;
@@ -161,7 +215,7 @@ class AccountProvider extends ChangeNotifier {
 
   Future<void> refreshBalance(String accountNumber) async {
     final requestId = 'refreshBalance_$accountNumber';
-    
+
     if (_activeRequests.contains(requestId)) {
       _logger.d('Request already in progress: $requestId');
       return;
@@ -177,7 +231,9 @@ class AccountProvider extends ChangeNotifier {
 
       _currentBalance = balance;
 
-      final index = _accounts.indexWhere((a) => a.accountNumber == accountNumber);
+      final index = _accounts.indexWhere(
+        (a) => a.accountNumber == accountNumber,
+      );
       if (index != -1) {
         _accounts[index] = _accounts[index].copyWith(
           currentBalance: balance.currentBalance,
@@ -218,7 +274,7 @@ class AccountProvider extends ChangeNotifier {
     DateTime toDate,
   ) async {
     final requestId = 'generateStatement_$accountNumber';
-    
+
     if (_activeRequests.contains(requestId)) {
       _logger.d('Request already in progress: $requestId');
       return;
@@ -272,13 +328,13 @@ class AccountProvider extends ChangeNotifier {
 
   void selectAccount(AccountListItemDTO account) {
     _logger.d('Selecting account: ${account.accountNumber}');
-    
+
     _selectedAccount = null;
     _currentBalance = null;
     _currentStatement = null;
-    
+
     notifyListeners();
-    
+
     fetchAccountDetails(account.accountNumber);
   }
 
@@ -322,17 +378,18 @@ class AccountProvider extends ChangeNotifier {
 
   void _startAutoRefresh() {
     _stopAutoRefresh(); // Stop any existing timer
-    
+
     _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
       _logger.d('Auto-refresh triggered');
-      
+
       if (_selectedAccount != null) {
         refreshBalance(_selectedAccount!.accountNumber);
       }
-      
     });
-    
-    _logger.d('Auto-refresh timer started (${_autoRefreshInterval.inMinutes} minutes)');
+
+    _logger.d(
+      'Auto-refresh timer started (${_autoRefreshInterval.inMinutes} minutes)',
+    );
   }
 
   void _stopAutoRefresh() {

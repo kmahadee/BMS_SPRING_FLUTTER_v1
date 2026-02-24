@@ -27,14 +27,39 @@ class AccountRepositoryImpl implements AccountRepository {
   AccountRepositoryImpl({required DioClient dioClient})
     : _dioClient = dioClient;
 
+  // @override
+  // Future<List<AccountListItemDTO>> getMyAccounts() async {
+  //   return _executeWithRetry(
+  //     operation: () async {
+  //       _logger.i('Fetching user accounts');
+
+  //       final response = await _dioClient.get<Map<String, dynamic>>(
+  //         ApiConstantsExtension.myAccounts,
+  //       );
+
+  //       final List<dynamic> accountsList = response['data'] as List<dynamic>;
+  //       final accounts = accountsList
+  //           .map(
+  //             (json) =>
+  //                 AccountListItemDTO.fromJson(json as Map<String, dynamic>),
+  //           )
+  //           .toList();
+
+  //       _logger.i('Fetched ${accounts.length} accounts');
+  //       return accounts;
+  //     },
+  //     operationName: 'getMyAccounts',
+  //   );
+  // }
+
   @override
-  Future<List<AccountListItemDTO>> getMyAccounts() async {
+  Future<List<AccountListItemDTO>> getMyAccounts(String customerId) async {
     return _executeWithRetry(
       operation: () async {
-        _logger.i('Fetching user accounts');
+        _logger.i('Fetching user accounts for customer: $customerId');
 
         final response = await _dioClient.get<Map<String, dynamic>>(
-          ApiConstantsExtension.myAccounts,
+          ApiConstantsExtension.getAccountsByCustomer(customerId),
         );
 
         final List<dynamic> accountsList = response['data'] as List<dynamic>;
@@ -111,12 +136,18 @@ class AccountRepositoryImpl implements AccountRepository {
           );
         }
 
+        // final requestData = {
+        //   'accountNumber': accountNumber,
+        //   'fromDate': fromDate.toIso8601String().split(
+        //     'T',
+        //   )[0], // YYYY-MM-DD format
+        //   'toDate': toDate.toIso8601String().split('T')[0],
+        // };
         final requestData = {
           'accountNumber': accountNumber,
-          'fromDate': fromDate.toIso8601String().split(
-            'T',
-          )[0], // YYYY-MM-DD format
-          'toDate': toDate.toIso8601String().split('T')[0],
+          'startDate':
+              '${fromDate.toIso8601String().split('T')[0]}T00:00:00', // Add time
+          'endDate': '${toDate.toIso8601String().split('T')[0]}T23:59:59',
         };
 
         final response = await _dioClient.post<Map<String, dynamic>>(
@@ -138,7 +169,7 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Future<List<AccountListItemDTO>> getAccountsByCustomerId(
-    int customerId,
+    String customerId,
   ) async {
     return _executeWithRetry(
       operation: () async {

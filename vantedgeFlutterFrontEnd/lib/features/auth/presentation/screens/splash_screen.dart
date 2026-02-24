@@ -188,13 +188,9 @@ class _SplashScreenState extends State<SplashScreen>
     print('  - _navigated: $_navigated');
     print('  - AnimationController initialized: $_animationControllerInitialized');
     
-    if (_animationController == null) {
-      print('🔴 [SplashScreen] AnimationController is null!');
-    } else {
-      print('  - AnimationController.value: ${_animationController.value}');
-      print('  - AnimationController.status: ${_animationController.status}');
-    }
-
+    print('  - AnimationController.value: ${_animationController.value}');
+    print('  - AnimationController.status: ${_animationController.status}');
+  
     // Listen to auth state changes reactively — no initState provider access
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
